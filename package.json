@@ -1,12 +1,13 @@
 {
   "name": "chinese-poker-lotus",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "斗地主游戏发牌及玩家控制策略库",
   "main": "lib/index.js",
   "scripts": {
     "lint": "node ./node_modules/.bin/tslint -e './src/**/*.d.ts' './src/**/*.ts'",
     "build": "./node_modules/.bin/tsc",
-    "prepublish": "yarn build",
+    "clean": "rm -rf ./dist ./lib",
+    "prepublish": "yarn run clean && yarn run build",
     "test": "node ./node_modules/.bin/mocha --compilers ts:ts-node/register --recursive ./src/**/*.spec.ts"
   },
   "repository": {
