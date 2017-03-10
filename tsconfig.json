@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "declaration": true,
+    "module": "commonjs",
+    "baseUrl": ".",
+    "paths": {
+      "*": [
+        "src/*"
+      ]
+    },
+    "target": "es5",
+    "rootDir": "./src",
+    "outDir": "./lib",
+    "noImplicitAny": true,
+    "allowJs": false,
+    "jsx": "react",
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "lib": [
+      "dom",
+      "es5",
+      "es2015",
+      "es2016",
+      "es2017"
+    ],
+    "sourceMap": false
+  },
+  "exclude": [
+    "node_modules",
+    "temp",
+    "lib",
+    "test"
+  ]
+}
