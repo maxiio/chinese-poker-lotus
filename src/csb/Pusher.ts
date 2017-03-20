@@ -9,8 +9,8 @@
  */
 
 
-import { Duplex } from './Duplex';
-import { BrokerMessage } from './types';
+import { Duplex } from './Duplex'
+import { BrokerMessage } from './types'
 
 
 export class Pusher {

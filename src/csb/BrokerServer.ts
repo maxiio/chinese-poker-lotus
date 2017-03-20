@@ -9,10 +9,10 @@
  */
 
 
-import { ServerOptions, Server } from './Server';
-import { parseBrokerMessage, serializeBrokerMessage } from './message';
-import { MessageKinds, Message } from './types';
-import WebSocket = require('ws');
+import { ServerOptions, Server } from './Server'
+import { parseBrokerMessage, serializeBrokerMessage } from './message'
+import { MessageKinds, Message } from './types'
+import WebSocket = require('ws')
 
 
 export class BrokerServer extends Server {

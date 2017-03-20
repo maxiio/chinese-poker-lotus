@@ -15,13 +15,13 @@ import {
   MessageResults,
   MessageKinds,
   MessageFunc
-} from './types';
-import { NMap } from '../shared/utils';
-import { Deferred } from '../shared/Deferred';
-import { EventEmitter } from 'events';
-import { Log } from '../shared/Log';
-import { UniqueIdPool } from '../shared/UniqueIdPool';
-import { UINT16_MAX_VALUE } from '../shared/constants';
+} from './types'
+import { NMap } from '../shared/utils'
+import { Deferred } from '../shared/Deferred'
+import { EventEmitter } from 'events'
+import { Log } from '../shared/Log'
+import { UniqueIdPool } from '../shared/UniqueIdPool'
+import { UINT16_MAX_VALUE } from '../shared/constants'
 
 
 export interface DuplexOptions {

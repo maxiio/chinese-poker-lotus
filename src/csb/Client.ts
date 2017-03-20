@@ -9,18 +9,18 @@
  */
 
 
-import { DuplexOptions, Duplex } from './Duplex';
+import { DuplexOptions, Duplex } from './Duplex'
 import {
   BrokerMessage,
   MessageKinds,
   Message,
   MessageResults,
   MessageFunc
-} from './types';
-import { parseMessage, serializeMessage } from './message';
-import { createNMap, noop } from '../shared/utils';
-import { Deferred } from '../shared/Deferred';
-import WebSocket = require('ws');
+} from './types'
+import { parseMessage, serializeMessage } from './message'
+import { createNMap, noop } from '../shared/utils'
+import { Deferred } from '../shared/Deferred'
+import WebSocket = require('ws')
 
 
 export class Client extends Duplex {

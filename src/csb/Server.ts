@@ -8,17 +8,17 @@
  * @desc Server.ts
  */
 
-import { createNMap, splice, NMap, noop } from '../shared/utils';
-import { Duplex, DuplexOptions } from './Duplex';
-import { Deferred } from '../shared/Deferred';
+import { createNMap, splice, NMap, noop } from '../shared/utils'
+import { Duplex, DuplexOptions } from './Duplex'
+import { Deferred } from '../shared/Deferred'
 import {
   BrokerMessage,
   MessageKinds,
   Message,
   MessageResults,
   MessageFunc
-} from './types';
-import WebSocket = require('ws');
+} from './types'
+import WebSocket = require('ws')
 
 
 export interface ServerOptions extends DuplexOptions {

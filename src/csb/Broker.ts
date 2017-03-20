@@ -8,18 +8,18 @@
  * @desc Broker.ts
  */
 
-import WebSocket = require('ws');
-import { createNMap, splice, random, noop, NMap } from '../shared/utils';
-import { UniqueIdPool } from '../shared/UniqueIdPool';
-import { MessageKinds, BrokerMessage, Message, ErrorFunc, MessageResults } from './types';
+import WebSocket = require('ws')
+import { createNMap, splice, random, noop, NMap } from '../shared/utils'
+import { UniqueIdPool } from '../shared/UniqueIdPool'
+import { MessageKinds, BrokerMessage, Message, ErrorFunc, MessageResults } from './types'
 import {
   parseMessage,
   serializeMessage,
   serializeBrokerMessage,
   parseBrokerMessage
-} from './message';
-import { Deferred } from '../shared/Deferred';
-import { Log } from '../shared/Log';
+} from './message'
+import { Deferred } from '../shared/Deferred'
+import { Log } from '../shared/Log'
 export interface BrokerOptions {
   serverHost: string;
   serverPort: number;

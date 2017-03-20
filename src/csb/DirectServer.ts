@@ -9,12 +9,12 @@
  */
 
 
-import { Server, ServerOptions } from './Server';
-import { BrokerMessage, MessageKinds, MessageResults } from './types';
-import { UniqueIdPool } from '../shared/UniqueIdPool';
-import { parseMessage, serializeMessage } from './message';
-import { Deferred } from '../shared/Deferred';
-import WebSocket = require('ws');
+import { Server, ServerOptions } from './Server'
+import { BrokerMessage, MessageKinds, MessageResults } from './types'
+import { UniqueIdPool } from '../shared/UniqueIdPool'
+import { parseMessage, serializeMessage } from './message'
+import { Deferred } from '../shared/Deferred'
+import WebSocket = require('ws')
 
 
 export class DirectServer extends Server {

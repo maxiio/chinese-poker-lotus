@@ -9,7 +9,7 @@
  */
 
 
-import { Message, MessageKinds, MessageResults, BrokerMessage } from './types';
+import { Message, MessageKinds, MessageResults, BrokerMessage } from './types'
 function isBufferLike(payload: any) {
   return typeof payload === 'string'
          || payload instanceof ArrayBuffer
