@@ -66,12 +66,13 @@ export class Client extends Duplex {
   }
 
   request(msg: BrokerMessage) {
-    msg.id  = msg.id || this.midPool.alloc()
-    const r = Object.assign({}, msg, {
+    msg.id   = msg.id || this.midPool.alloc()
+    msg.kind = msg.kind || MessageKinds.ClientRequest
+    const r  = Object.assign({}, msg, {
       kind   : MessageKinds.ServerRequest,
       payload: void 0,
     })
-    const d = new Deferred<Message>(this.options.timeout, () => {
+    const d  = new Deferred<Message>(this.options.timeout, () => {
       r.result = MessageResults.Timeout
       d.reject(r)
     })
