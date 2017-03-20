@@ -8,8 +8,9 @@
  * @desc index.ts
  */
 
-
 export * from './types'
-export * from './deal'
-export * from './guess'
-export * from './utils'
+export * from './Poker'
+export * from './Player'
+export * from './MessageQueue'
+export * from './Game'
+export * from './GameManager'

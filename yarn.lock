@@ -2,6 +2,20 @@
 # yarn lockfile v1
 
 
+"@types/lodash@^4.14.55":
+  version "4.14.55"
+  resolved "http://registry.npm.taobao.org/@types/lodash/download/@types/lodash-4.14.55.tgz#75d7d4eba020ee4103d4cbd0f2a3ef5db8f7534f"
+
+"@types/node@*", "@types/node@^7.0.8":
+  version "7.0.8"
+  resolved "http://registry.npm.taobao.org/@types/node/download/@types/node-7.0.8.tgz#25e4dd804b630c916ae671233e6d71f6ce18124a"
+
+"@types/ws@^0.0.39":
+  version "0.0.39"
+  resolved "http://registry.npm.taobao.org/@types/ws/download/@types/ws-0.0.39.tgz#d2386c3475eb64e561137a245a4d1d13b1f69fd1"
+  dependencies:
+    "@types/node" "*"
+
 ansi-align@^1.1.0:
   version "1.1.0"
   resolved "http://registry.npm.taobao.org/ansi-align/download/ansi-align-1.1.0.tgz#2f0c1658829739add5ebb15e6b0c6e3423f016ba"
@@ -390,6 +404,10 @@ lodash.keys@^3.0.0:
     lodash.isarguments "^3.0.0"
     lodash.isarray "^3.0.0"
 
+lodash@^4.17.4:
+  version "4.17.4"
+  resolved "http://registry.npm.taobao.org/lodash/download/lodash-4.17.4.tgz#78203a4d1c328ae1d86dca6460e369b57f4055ae"
+
 lowercase-keys@^1.0.0:
   version "1.0.0"
   resolved "http://registry.npm.taobao.org/lowercase-keys/download/lowercase-keys-1.0.0.tgz#4e3366b39e7f5457e35f1324bdf6f88d0bfc7306"
@@ -669,6 +687,10 @@ typescript@^2.2.1:
   version "2.2.1"
   resolved "http://registry.npm.taobao.org/typescript/download/typescript-2.2.1.tgz#4862b662b988a4c8ff691cc7969622d24db76ae9"
 
+ultron@~1.1.0:
+  version "1.1.0"
+  resolved "http://registry.npm.taobao.org/ultron/download/ultron-1.1.0.tgz#b07a2e6a541a815fc6a34ccd4533baec307ca864"
+
 unique-string@^1.0.0:
   version "1.0.0"
   resolved "http://registry.npm.taobao.org/unique-string/download/unique-string-1.0.0.tgz#9e1057cca851abb93398f8b33ae187b99caec11a"
@@ -735,6 +757,12 @@ write-file-atomic@^1.1.2:
     graceful-fs "^4.1.11"
     imurmurhash "^0.1.4"
     slide "^1.1.5"
+
+ws@^2.2.0:
+  version "2.2.0"
+  resolved "http://registry.npm.taobao.org/ws/download/ws-2.2.0.tgz#3218a7b1ebd15a09c56bb12a3e943a960eb7bde5"
+  dependencies:
+    ultron "~1.1.0"
 
 xdg-basedir@^3.0.0:
   version "3.0.0"
