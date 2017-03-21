@@ -72,6 +72,7 @@ if (!module.parent) {
   }
 }
 
+// tslint:disable-next-line:no-empty
 export function noop() {}
 
 
@@ -144,7 +145,9 @@ export function format(fmt: any, ...params: any[]) {
   }
   ret += fmt.slice(i).replace(/%%/g, '%')
   for (let value: any; pos < params.length; pos++) {
+    // from node source code
     value = params[pos]
+    // tslint:disable-next-line:no-null-keyword
     if (value === null || (typeof value !== 'object' && typeof value !== 'symbol')) {
       ret += ' ' + value
     } else {

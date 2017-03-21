@@ -16,7 +16,8 @@ import {
   CardColors,
   TimesKinds,
   PlayKinds,
-  PlayAction, Seats
+  PlayAction,
+  Seats
 } from './types'
 
 
@@ -213,6 +214,7 @@ export function parsePlayAction(cards: PokerCard[], seat: Seats): PlayAction {
     // 暂时用最笨的办法: 分离主牌牌型和副牌牌型, 再从主牌型中查找有可能的主牌
     let main = 0
     mainCard = void 0
+    // tslint:disable-next-line:whitespace
     for (let i = cards.length - 1; i > 1;) {
       if (cards[i].value === cards[i - 2].value) {
         // 是主牌牌型
@@ -251,6 +253,7 @@ export function parsePlayAction(cards: PokerCard[], seat: Seats): PlayAction {
     let side = 0
     let main = 0
     mainCard = void 0
+    // tslint:disable-next-line:whitespace
     for (let i = cards.length - 1; i > 1;) {
       if (i > 2 && cards[i].value === cards[i - 3].value) {
         // 四张相同必定是副牌
@@ -303,7 +306,7 @@ export function parsePlayAction(cards: PokerCard[], seat: Seats): PlayAction {
       }
     }
   }
-  if (kind == void 0) {
+  if (kind === void 0) {
     kind     = PlayKinds.None
     mainCard = void 0
   }
