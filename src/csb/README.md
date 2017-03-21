@@ -113,8 +113,8 @@ client.addAction(0x01, (msg) => {
 })
 
 function bootstrap() {
-  Pusher.push({ 
-    actionId: 0x01,
+  Pusher.get().request({ 
+    action: 0x01,
     payload: 'Hello World',
   }).then((resp) => {
     console.log('server response: ', resp)
@@ -148,7 +148,7 @@ server.addAction(0x02, (msg) => {
 })
 
 server.on('connect', (client) => {
-  Pusher.push({ actionId: 0x01, payload: 'Hello from direct server' })
+  Pusher.get().request({ action: 0x01, payload: 'Hello from direct server' })
 })
 ```
 

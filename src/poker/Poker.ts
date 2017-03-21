@@ -23,26 +23,26 @@
  * ```
  */
 
-import random = require('lodash/random')
-import { NMap, inEnum } from '../utils'
+
+import { EventEmitter } from 'events'
 import {
   Seats,
-  PokerStates,
   PokerCardMeta,
+  PokerCard,
+  PokerStates,
   FightAction,
   PlayAction,
   TimesAction,
-  PokerCard,
-  ActionErrors,
-  FightValues,
-  SeatVisibleData,
   FinishReason,
-  PlayKinds
+  SeatVisibleData,
+  ActionErrors,
+  PlayKinds,
+  FightValues
 } from './types'
-import { MAP_FIGHT_TO_TIMES, TIME_VALUES, NEXT_SEATS, ALL_SEATS } from './consts'
 import { Lotus } from './Lotus'
+import { NMap, inEnum } from '../shared/utils'
 import { RandomLotus } from './RandomLotus'
-import { EventEmitter } from 'events'
+import { MAP_FIGHT_TO_TIMES, NEXT_SEATS, TIME_VALUES, ALL_SEATS } from './constants'
 import { getBaseKind, parsePlayAction } from './utils'
 
 
@@ -95,6 +95,7 @@ export class Poker extends EventEmitter {
     fightStarter = Seats.A,
     lotus: Lotus = new RandomLotus(),
   ) {
+    super()
     this.fightStarter = fightStarter
     this.lotus        = lotus
   }
@@ -234,7 +235,7 @@ export class Poker extends EventEmitter {
     this.addTimes({
       kind : getBaseKind(this.base),
       seat : Seats.Base,
-      cards: this.seatCards[Seats.Base].slice(),
+      cards: this.originalCards[Seats.Base].slice(),
     })
     // 改变状态
     this.state = PokerStates.Playing
@@ -255,13 +256,13 @@ export class Poker extends EventEmitter {
     }
     const cards = new Array<PokerCard>(cardIdList.length)
     for (let i = 0; i < cardIdList.length; i++) {
+      const id = cardIdList[i]
       if (!this.cards[id] || this.cards[id].seat !== seat || this.cards[id].used) {
         return ActionErrors.PlayBadCards
       }
       cards[i] = this.cards[id].card
     }
-    const action = parsePlayAction(cards)
-    action.seat  = seat
+    const action = parsePlayAction(cards, seat)
     if (action.kind === PlayKinds.None) {
       return ActionErrors.PlayIsNotHand
     }
@@ -278,6 +279,9 @@ export class Poker extends EventEmitter {
       if (prev.mainCard.value >= action.mainCard.value) {
         return ActionErrors.PlayBadValue
       }
+    }
+    for (let i = 0; i < cardIdList.length; i++) {
+      this.cards[cardIdList[i]].used = true
     }
     this.playHistory[this.playHistory.length - 1].push(action)
     if (action.kind === PlayKinds.Pass && ++this.passCount === 2) {

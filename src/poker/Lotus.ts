@@ -9,14 +9,13 @@
  */
 
 
-import { NMap } from '../utils'
 import { PokerCard, Seats } from './types'
-import { BASE_CARD_SIZE, SEAT_CARD_SIZE } from './consts'
-import { createNMap } from '../shared/utils'
+import { NMap, createNMap } from '../shared/utils'
+import { BASE_CARD_SIZE, SEAT_CARD_SIZE } from './constants'
 
 
 export abstract class Lotus {
-  protected seats = createNMap<PokerCard[]>()
+  protected seats: NMap<PokerCard[]> = createNMap<PokerCard[]>()
 
   abstract shuffle(): void;
 

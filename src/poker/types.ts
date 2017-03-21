@@ -160,7 +160,7 @@ export interface SeatVisibleData {
   actor: Seats;
   landlord?: Seats;
   fightHistory: FightAction[];
-  timesHistory: TimesAction;
+  timesHistory: TimesAction[];
   playHistory?: PlayAction[][];
   lastPlay: PlayAction;
   cards: PokerCard[];

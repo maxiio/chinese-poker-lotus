@@ -11,9 +11,9 @@
 
 import { noop } from './utils'
 export class Deferred<T> {
-  readonly promise: Promise<T>
-  readonly resolve: (data: T) => void
+  readonly resolve: (data: T|Promise<T>) => void
   readonly reject: (reason: any) => void
+  readonly promise: Promise<T>
   readonly timeout: number
   readonly timeoutFunc: () => void
   readonly timer: number
@@ -27,8 +27,8 @@ export class Deferred<T> {
 
   constructor(timeout?: number, timeoutFunc = noop) {
     this.promise     = new Promise<T>((resolve, reject) => {
-      this.resolve = resolve
-      this.reject  = reject
+      (<any>this).resolve = resolve;
+      (<any>this).reject  = reject
     })
     this.isTimeout   = false
     this.timeout     = timeout

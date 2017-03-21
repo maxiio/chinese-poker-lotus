@@ -26,10 +26,10 @@ export class Log {
   private static instances = createSMap<Log>()
 
   get(id: string) {
-    if (!this.instances[id]) {
-      this.instances[id] = new Log(id)
+    if (!Log.instances[id]) {
+      Log.instances[id] = new Log(id)
     }
-    return this.instances[id]
+    return Log.instances[id]
   }
 
   constructor(

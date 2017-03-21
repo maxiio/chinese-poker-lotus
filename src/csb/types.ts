@@ -9,6 +9,7 @@
  */
 
 
+import { Deferred } from '../shared/Deferred'
 export enum MessageKinds {
   ClientRequest   = 0x00,
   ServerResponse  = 0x01,
@@ -22,30 +23,60 @@ export enum MessageKinds {
 
 export enum MessageResults {
   Reserved       = 0x00,
-  Ok             = 0x01,
+  Ok             = 0x7F,
   Unknown        = 0x10,
   NotFoundTarget = 0x11,
   NotFoundAction = 0x12,
   WriteError     = 0x13,
   Timeout        = 0x14,
+  ParseError     = 0x15,
+}
+
+export enum MessageEncodings {
+  Binary     = 0,
+  String     = 1,
+  Json       = 2,
+  UrlEncoded = 3,
+  FormData   = 4,
+}
+
+export interface RequestOptions {
+  id?: number;
+  to?: number;
+  action: number;
+  data: any;
+}
+
+export interface ResponseOptions {
+  result: MessageResults;
+  data: any;
 }
 
 export interface Message {
-  kind?: MessageKinds;
-  result?: MessageResults;
-  id?: number;
-  actionId?: number;
-  payload?: Buffer;
-  error?: Error;
+  client?: number;
+  kind: number;
+  result: MessageResults;
+  id: number;
+  action: number;
+  payload: Buffer;
+  data?: any;
 }
 
-export interface BrokerMessage extends Message {
-  clientId?: number;
+export interface CsbError {
+  result: MessageResults;
+  raw?: Error;
 }
 
-export type ErrorFunc = (error: Error) => void
+export type ErrorFunc = (error: CsbError) => void
 
-export type MessageFunc = (msg: BrokerMessage) => void
+export type ActionFunc = (msg: Message) => Promise<ResponseOptions>
 
-export type ActionFunc = (msg: BrokerMessage) => Promise<BrokerMessage>
+export interface CsbAction {
+  action?: number;
+  encoding: MessageEncodings;
+  handler: ActionFunc;
+}
 
+export interface RequestHolder extends Deferred<Message> {
+  encoding?: MessageEncodings;
+}

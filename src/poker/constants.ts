@@ -10,11 +10,10 @@
 
 
 import { CardValues, TimesKinds, FightValues, Seats, CardColors } from './types'
-import { NMap } from '../utils'
-import { createNMap } from '../shared/utils'
+import { NMap } from '../shared/utils'
 
 
-export const TIME_VALUES = createNMap<number>({
+export const TIME_VALUES: NMap<number> = {
   [TimesKinds.FightOne]         : 1,
   [TimesKinds.FightTwo]         : 2,
   [TimesKinds.FightThree]       : 3,
@@ -27,26 +26,26 @@ export const TIME_VALUES = createNMap<number>({
   [TimesKinds.BasePair]         : 4,
   [TimesKinds.BaseNormal]       : 1,
   [TimesKinds.Bomb]             : 2,
-})
+}
 
 export const REAL_SEATS: Seats[] = [Seats.A, Seats.B, Seats.C]
 export const ALL_SEATS: Seats[]  = [Seats.A, Seats.B, Seats.C, Seats.Base]
 
 export const SEAT_CARD_SIZE  = 17
 export const BASE_CARD_SIZE  = 3
-export const TOTAL_CARD_SIZE = SEAT_CARD_SIZE * REAL_SEATS + BASE_CARD_SIZE
+export const TOTAL_CARD_SIZE = 54
 
-export const NEXT_SEATS = createNMap<Seats>({
+export const NEXT_SEATS: NMap<Seats> = {
   [Seats.A]: Seats.B,
   [Seats.B]: Seats.C,
   [Seats.C]: Seats.A,
-})
+}
 
-export const MAP_FIGHT_TO_TIMES = createNMap<TimesKinds>({
+export const MAP_FIGHT_TO_TIMES: NMap<TimesKinds> = {
   [FightValues.One]  : TimesKinds.FightOne,
   [FightValues.Two]  : TimesKinds.FightTwo,
   [FightValues.Three]: TimesKinds.FightThree,
-})
+}
 
 
 export const CARD_VALUES: CardValues[] = [

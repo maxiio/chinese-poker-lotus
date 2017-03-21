@@ -665,6 +665,10 @@ tsconfig@^5.0.2:
     strip-bom "^2.0.0"
     strip-json-comments "^2.0.0"
 
+tslib@^1.6.0:
+  version "1.6.0"
+  resolved "http://registry.npm.taobao.org/tslib/download/tslib-1.6.0.tgz#cf36c93e02ae86a20fc131eae511162b869a6652"
+
 tslint@^4.5.1:
   version "4.5.1"
   resolved "http://registry.npm.taobao.org/tslint/download/tslint-4.5.1.tgz#05356871bef23a434906734006fc188336ba824b"

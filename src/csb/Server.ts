@@ -8,16 +8,11 @@
  * @desc Server.ts
  */
 
-import { createNMap, splice, NMap, noop } from '../shared/utils'
+import { createNMap, splice, NMap } from '../shared/utils'
 import { Duplex, DuplexOptions } from './Duplex'
-import { Deferred } from '../shared/Deferred'
-import {
-  BrokerMessage,
-  MessageKinds,
-  Message,
-  MessageResults,
-  MessageFunc
-} from './types'
+import { MessageKinds } from './types'
+import { UniqueIdPool } from '../shared/UniqueIdPool'
+import { UINT16_MAX_VALUE } from '../shared/constants'
 import WebSocket = require('ws')
 
 
@@ -29,7 +24,7 @@ export interface ClientInstance {
   id: number;
   ws?: WebSocket;
   headers: NMap<string>;
-  requests: NMap<Deferred<BrokerMessage>>;
+  midPool: UniqueIdPool;
 }
 
 
@@ -37,14 +32,24 @@ export abstract class Server extends Duplex {
   protected clientDict = createNMap<ClientInstance>()
   protected clientList = new Array<ClientInstance>(0)
 
-  constructor(
-    private options: ServerOptions,
-  ) {
-    super(options)
+  readonly requestKind  = MessageKinds.ServerRequest
+  readonly responseKind = MessageKinds.ServerResponse
+
+  readonly acceptRequestKind  = MessageKinds.ClientRequest
+  readonly acceptResponseKind = MessageKinds.ClientResponse
+
+  getMid(target: number) {
+    return this.clientDict[target] ? this.clientDict[target].midPool.alloc() : 0
   }
 
+  constructor(options: ServerOptions) { super(options) }
+
   protected addClient(id: number, headers: NMap<string>, ws?: WebSocket) {
-    const instance = <ClientInstance>{ id, headers, ws, requests: createNMap() }
+    if (this.clientDict[id] && this.clientDict[id].ws && this.clientDict[id].ws !== ws) {
+      this.delClient(id)
+    }
+    const midPool  = new UniqueIdPool(0, UINT16_MAX_VALUE, void 0, true)
+    const instance = <ClientInstance>{ id, headers, ws, midPool }
     this.clientList.push(instance)
     this.clientDict[id] = instance
     this.emit('connect', instance)
@@ -61,80 +66,9 @@ export abstract class Server extends Duplex {
     return this
   }
 
-  protected handleMessage(data: Message, from: number) {
-    switch (msg.kind) {
-      case MessageKinds.ClientRequest:
-        this.response(msg)
-        break
-      case MessageKinds.ClientResponse:
-        this.clientDict[from]
-        && this.clientDict[from].requests[msg.id]
-        && this.clientDict[from].requests[msg.id].resolve(msg)
-        break
-      default:
-        this.log.notice('received unknown kind<%H> of message<%d> from client<%s>',
-          msg.kind,
-          msg.id,
-          from)
-        break
-    }
-  }
-
-  abstract serialize(msg: BrokerMessage): Buffer
-
-  send(data: BrokerMessage, callback: MessageFunc = noop) {
-    const client = this.clientDict[data.clientId]
-    if (!client) {
-      callback({ result: MessageResults.NotFoundTarget })
-      return
-    }
-    client.ws.send(this.serialize(data), (err) => {
-      if (err) {
-        this.log.error('send kind<%H> of message<%d> to client<%d> error: %s',
-          data.kind,
-          data.id,
-          data.clientId,
-          err)
-      } else {
-        this.log.debug('sent kind<%H> of message<%d> to client<%d>',
-          data.kind,
-          data.id,
-          data.clientId)
-      }
-      callback(err ? { result: MessageResults.WriteError } : void 0)
-    })
-  }
-
-  request(msg: BrokerMessage) {
-    msg.id   = msg.id || this.midPool.alloc()
-    msg.kind = msg.kind || MessageKinds.ServerRequest
-    const r  = Object.assign({}, msg, {
-      kind   : MessageKinds.ClientResponse,
-      payload: void 0,
-    })
-    const d  = new Deferred<BrokerMessage>(this.options.timeout, () => {
-      r.result = MessageResults.Timeout
-      d.reject(r)
-    })
-    this.send(msg, (err) => {
-      if (err) {
-        r.result = err.result
-        d.reject(r)
-      }
-    })
-    d.promise.then(() => {
-      if (this.clientDict[msg.clientId]) {
-        delete this.clientDict[msg.clientId].requests[msg.id]
-      }
-    }, () => {
-      if (this.clientDict[msg.clientId]) {
-        delete this.clientDict[msg.clientId].requests[msg.id]
-      }
-    })
-    this.clientDict[msg.clientId] && this.clientDict[msg.clientId].requests[msg.id] = d
-    return d
-  }
-
   on(event: 'connect', callback: (client: ClientInstance) => void): this
   on(event: 'close', callback: (client: ClientInstance) => void): this
+  on(event: string, callback: (...params: any[]) => void) {
+    return super.on(event, callback)
+  }
 }

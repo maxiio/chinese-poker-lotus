@@ -10,92 +10,43 @@
 
 
 import { DuplexOptions, Duplex } from './Duplex'
-import {
-  BrokerMessage,
-  MessageKinds,
-  Message,
-  MessageResults,
-  MessageFunc
-} from './types'
-import { parseMessage, serializeMessage } from './message'
-import { createNMap, noop } from '../shared/utils'
-import { Deferred } from '../shared/Deferred'
+import { MessageKinds } from './types'
+import { UINT16_MAX_VALUE } from '../shared/constants'
+import { UniqueIdPool } from '../shared/UniqueIdPool'
+import { parseMessage } from './utils'
 import WebSocket = require('ws')
 
 
 export class Client extends Duplex {
   readonly ws: WebSocket
-  private requests = createNMap<Deferred<Message>>()
+  readonly midPool = new UniqueIdPool(0, UINT16_MAX_VALUE, void 0, true)
 
-  constructor(
-    private options: DuplexOptions
-  ) {
+  readonly withClient = false
+
+  readonly requestKind  = MessageKinds.ClientRequest
+  readonly responseKind = MessageKinds.ClientResponse
+
+  readonly acceptRequestKind  = MessageKinds.ServerRequest
+  readonly acceptResponseKind = MessageKinds.ServerResponse
+
+  getWs() { return this.ws }
+
+  getMid() { return this.midPool.alloc() }
+
+  closeSelf() { this.ws.close() }
+
+  closeRemote() { throw new Error('Client cannot close server!') }
+
+  constructor(options: DuplexOptions) {
     super(options)
     const { protocol, targetHost, targetPort } = options
 
     const ws = new WebSocket(`${protocol}://${targetHost}:${targetPort}/`)
-    ws.on('message', (data: Buffer) => this.handleMessage(data))
+    ws.on('message', (data: Buffer) => {
+      if (data.byteLength < 8) { return }
+      const msg = parseMessage(data)
+      this.handleMessage(msg)
+    })
     this.ws = ws
-  }
-
-  send(data: BrokerMessage, callback: MessageFunc = noop) {
-    this.ws.send(serializeMessage(data), (err) => {
-      if (err) {
-        this.log.error('send kind<%s> of message<%s> error: %s', data.kind, data.id, err)
-      } else {
-        this.log.debug('sent kind<%s> of message<%s>', data.kind, data.id)
-      }
-      callback(err ? { result: MessageResults.WriteError } : void 0)
-    })
-  }
-
-  private handleMessage(data: Buffer) {
-    const msg = parseMessage(data)
-    switch (msg.kind) {
-      case MessageKinds.ServerResponse:
-        this.requests[msg.id]
-        && this.requests[msg.id].resolve(msg)
-        break
-      case MessageKinds.ServerRequest:
-        this.response(msg)
-        break
-      default:
-        this.log.notice('received unknown message<%H> kind<%H>', msg.id, msg.kind)
-        break
-    }
-  }
-
-  request(msg: BrokerMessage) {
-    msg.id   = msg.id || this.midPool.alloc()
-    msg.kind = msg.kind || MessageKinds.ClientRequest
-    const r  = Object.assign({}, msg, {
-      kind   : MessageKinds.ServerRequest,
-      payload: void 0,
-    })
-    const d  = new Deferred<Message>(this.options.timeout, () => {
-      r.result = MessageResults.Timeout
-      d.reject(r)
-    })
-    this.send(msg, (err) => {
-      if (err) {
-        r.result = err.result
-        d.reject(err)
-      }
-    })
-    d.promise.then(() => {
-      delete this.requests[msg.id]
-    }, () => {
-      delete this.requests[msd.id]
-    })
-    this.requests[msg.id] = d
-    return d.promise
-  }
-
-  closeSelf() {
-    this.ws.close()
-  }
-
-  closeRemote() {
-    throw new Error('Client cannot close server!')
   }
 }

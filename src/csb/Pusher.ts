@@ -8,9 +8,7 @@
  * @desc Pusher.ts
  */
 
-
 import { Duplex } from './Duplex'
-import { BrokerMessage } from './types'
 
 
 export class Pusher {
@@ -18,9 +16,7 @@ export class Pusher {
 
   private static pusher: Pusher
 
-  static set(duplex: Duplex) { this.pusher = new Pusher(duplex) }
+  static set(duplex: Duplex) { Pusher.pusher = new Pusher(duplex) }
 
-  static get() { return this.pusher.duplex }
-
-  static push(msg: BrokerMessage) { return this.pusher.duplex.request(msg) }
+  static get() { return Pusher.pusher.duplex }
 }

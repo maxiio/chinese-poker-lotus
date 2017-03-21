@@ -9,16 +9,15 @@
  */
 
 
+import { CARD_COLORS, CARD_VALUES, TOTAL_CARD_SIZE } from './constants'
 import {
   PokerCard,
   CardValues,
   CardColors,
   TimesKinds,
-  PlayAction,
-  PlayKinds
+  PlayKinds,
+  PlayAction, Seats
 } from './types'
-import { uid } from '../utils'
-import { CARD_COLORS, CARD_VALUES } from './consts'
 
 
 /**
@@ -28,19 +27,13 @@ import { CARD_COLORS, CARD_VALUES } from './consts'
  * @return {PokerCard[]}
  */
 export function sortCards(cards: PokerCard[], copy = false) {
-  copy && (cards = cards.splice())
+  copy && (cards = cards.slice())
   return cards.sort((a, b) => a.value - b.value || a.color - b.color)
 }
 
-/**
- * 创建一个只读的卡牌
- * @param value
- * @param color
- * @return {PokerCard}
- */
-export function createCard(value: CardValues, color: CardColors): PokerCard {
+export function createCard(id: number, value: CardValues, color: CardColors): PokerCard {
   return Object.freeze<PokerCard>({
-    id: uid(),
+    id,
     value,
     color,
   })
@@ -51,14 +44,15 @@ export function createCard(value: CardValues, color: CardColors): PokerCard {
  * @return {PokerCard[]}
  */
 export function getInitialCards() {
-  const cards: PokerCard[] = []
-  for (let j = 0; j < CARD_COLORS.length; i++) {
+  const cards = new Array<PokerCard>(TOTAL_CARD_SIZE)
+  let k       = 0
+  for (let j = 0; j < CARD_COLORS.length; j++) {
     for (let i = 0; i < CARD_VALUES.length; i++) {
-      cards.push(createCard(CARD_VALUES[i], CARD_COLORS[j]))
+      cards[k] = createCard(k, CARD_VALUES[i], CARD_COLORS[j])
     }
   }
-  cards.push(createCard(CardValues.LJ, CardColors.None))
-  cards.push(createCard(CardValues.BJ, CardColors.None))
+  cards[k++]   = createCard(k, CardValues.LJ, CardColors.None)
+  cards[k + 1] = createCard(k, CardValues.BJ, CardColors.None)
   return cards
 }
 
@@ -96,7 +90,7 @@ export function getBaseKind(base: PokerCard[]) {
   }
 }
 
-export function parsePlayAction(cards: PokerCard[]): PlayAction {
+export function parsePlayAction(cards: PokerCard[], seat: Seats): PlayAction {
   let kind: PlayKinds
   let mainCard: PokerCard
   sortCards(cards)
@@ -313,5 +307,5 @@ export function parsePlayAction(cards: PokerCard[]): PlayAction {
     kind     = PlayKinds.None
     mainCard = void 0
   }
-  return { kind, mainCard, cards, seat: void 0 }
+  return { kind, mainCard, cards, seat }
 }

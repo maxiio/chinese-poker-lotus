@@ -8,51 +8,50 @@
  * @desc Broker.ts
  */
 
+
 import WebSocket = require('ws')
-import { createNMap, splice, random, noop, NMap } from '../shared/utils'
-import { UniqueIdPool } from '../shared/UniqueIdPool'
-import { MessageKinds, BrokerMessage, Message, ErrorFunc, MessageResults } from './types'
-import {
-  parseMessage,
-  serializeMessage,
-  serializeBrokerMessage,
-  parseBrokerMessage
-} from './message'
-import { Deferred } from '../shared/Deferred'
 import { Log } from '../shared/Log'
+import { UniqueIdPool } from '../shared/UniqueIdPool'
+import { createNMap, splice, random } from '../shared/utils'
+import { stringifyMessage, stringifyPayload } from './utils'
+import { MessageKinds, MessageResults, Message, MessageEncodings } from './types'
+
+
 export interface BrokerOptions {
   serverHost: string;
   serverPort: number;
-  serverIdField: string; // for client, this upgrade header specify target server, for
-  // server, this field specify the server's id, if the id is used already, will close
-  // it immediately
+  serverIdField: string;  // for client, this upgrade header specify target server, for
+                          // server, this field specify the server's id, if the id is
+                          // used already, will close it immediately
   clientHost: string;
   clientPort: number;
-  responseTimeout: number;
+  pingTimeout: number;
+
+  log: Log;
 }
 
-export interface ServerInstance {
+export interface BrokerServerMeta {
   id: number;
   ws: WebSocket;
   clients: number[];
-  queues: NMap<NMap<Deferred<Message>>>;
 }
 
-export interface ClientInstance {
+export interface BrokerClientMeta {
   id: number;
   ws: WebSocket;
   server: number;
-  queue: NMap<Deferred<BrokerMessage>>;
 }
 
 export class Broker {
   private server: WebSocket.Server
   private client: WebSocket.Server
-  private log = new Log('Broker')
+
+  private log: Log
 
   constructor(
-    private options: BrokerOptions
+    private options: BrokerOptions,
   ) {
+    this.log     = options.log
     const server = new WebSocket.Server({
       host: options.serverHost,
       port: options.serverPort,
@@ -67,8 +66,8 @@ export class Broker {
     this.client = client
   }
 
-  private serverDict   = createNMap<ServerInstance>()
-  private serverList   = new Array<ServerInstance>(0)
+  private serverDict   = createNMap<BrokerServerMeta>()
+  private serverList   = new Array<BrokerServerMeta>(0)
   private serverIdPool = new UniqueIdPool()
 
   private addServer(ws: WebSocket) {
@@ -77,7 +76,7 @@ export class Broker {
     if (this.serverDict[id]) {
       return ws.close(403, 'Id used already')
     }
-    const instance = <ServerInstance>{ id, ws, clients: [], queues: createNMap() }
+    const instance = <BrokerServerMeta>{ id, ws, clients: [] }
     ws.on('message', (data) => this.handleServerMessage(data, id))
     ws.on('close', () => this.delServer(id))
     this.serverDict[id] = instance
@@ -96,8 +95,8 @@ export class Broker {
     }
   }
 
-  private clientDict   = createNMap<ClientInstance>()
-  private clientList   = new Array<ClientInstance>(0)
+  private clientDict   = createNMap<BrokerClientMeta>()
+  private clientList   = new Array<BrokerClientMeta>(0)
   private clientIdPool = new UniqueIdPool()
 
   private addClient(ws: WebSocket) {
@@ -109,20 +108,17 @@ export class Broker {
       return
     }
     server.clients.push(id)
-    server.queues[id] = createNMap()
     this.sendToServer(server.id, {
+      client : id,
       kind   : MessageKinds.ClientConnected,
-      payload: {
-        headers: ws.upgradeReq.headers,
-      },
+      result : MessageResults.Reserved,
+      id     : 0,
+      action : 0,
+      payload: void 0,
+      data   : { headers: ws.upgradeReq.headers },
     })
-    const client = {
-      id,
-      ws,
-      server: server.id,
-      queue : createNMap<Deferred<BrokerMessage>>(),
-    }
-    ws.on('message', (data) => this.handleClientMessage(data, id))
+    const client = { id, ws, server: server.id }
+    ws.on('message', (data: Buffer) => this.handleClientMessage(data, id))
     ws.on('close', () => this.delClient(id))
     this.clientDict[id] = client
     this.clientList.push(client)
@@ -141,111 +137,79 @@ export class Broker {
     if (!server) {
       return
     }
-    delete server.queues[id]
     splice(server.clients, id)
-    this.sendToServer(server.id, { clientId: id, kind: MessageKinds.ClientClosed })
+    this.sendToServer(server.id, {
+      client : id,
+      kind   : MessageKinds.ClientClosed,
+      result : MessageResults.Reserved,
+      id     : 0,
+      action : 0,
+      payload: void 0,
+    })
   }
 
-  private sendToServer(id: number, msg: BrokerMessage, cb: ErrorFunc = noop) {
+  // 1. write client message to server
+  //    need to add extra header fields to message
+  // 2. send client connect information to server
+  //    need to serialize message
+  private sendToServer(id: number, msg: Message|Buffer, from?: number) {
     const server = this.serverDict[id]
-    if (!server) {
-      cb(void 0)
-      return
+    if (!server) { return }
+    let data: Buffer
+    if (!Buffer.isBuffer(msg)) {
+      msg.payload = stringifyPayload(msg.data, MessageEncodings.Json)
+      data        = stringifyMessage(msg, true)
+    } else {
+      const head = Buffer.alloc(4)
+      head.writeUInt32BE(from, 0)
+      data = Buffer.concat([head, msg])
     }
-    server.ws.send(serializeBrokerMessage(msg), (err) => {
+    server.ws.send(data, (err) => {
       if (err) {
-        this.log.error('send message<%s> from client<%s> to server<%s> error: %s',
-          msg.id,
-          msg.clientId,
-          id,
-          err)
+        this.log.error(
+          'send kind<%H> of message<%d> from client<%d> to server<%d> error: %s',
+          data.readUInt8(4), data.readUInt16BE(6), data.readUInt32BE(0), id, err,
+        )
       } else {
-        this.log.debug('send message<%s> from client<%s> to server<%s>',
-          msg.id,
-          msg.clientId,
-          id)
+        this.log.debug(
+          'sent kind<%H> of message<%d> from client<%d> to server<%d>',
+          data.readUInt8(4), data.readUInt16BE(6), data.readUInt32BE(0), id,
+        )
       }
-      cb(err)
     })
   }
 
-  private sendToClient(id: number, msg: Message, cb: ErrorFunc = noop) {
+  // write server message to client
+  // need to remove extra header fields from message
+  private sendToClient(data: Buffer, from: number) {
+    const id     = data.readUInt32BE(4)
     const client = this.clientDict[id]
-    if (!client) {
-      cb(void 0)
-      return
-    }
-    client.ws.send(serializeMessage(msg), (err) => {
+    if (!client) { return }
+    client.ws.send(data.slice(4), (err) => {
       if (err) {
-        this.log.error('send message<%s> to client<%s> error: %s', msg.id, id, err)
+        this.log.error(
+          'send kind<%H> of message<%d> from server<%d> to client<%d> error: %s',
+          data.readUInt8(4), data.readUInt16BE(6), from, id, err,
+        )
       } else {
-        this.log.debug('send message<%s> to client<%s>', msg.id, id)
+        this.log.debug(
+          'sent kind<%H> of mesage<%d> from server<%d> to client<%d>',
+          data.readUInt8(4), data.readUInt16BE(6), from, id,
+        )
       }
-      cb(err)
     })
-  }
-
-  private checkOutClient(msg: BrokerMessage) {
-    const client = this.clientDict[msg.clientId]
-    if (!client) { return }
-    const defer = client.queue[msg.id]
-    if (!defer) { return }
-    delete client.queue[msg.id]
-    defer.isTimeout || clearTimeout(defer.timer)
-    if (msg.result === MessageResults.Ok) {
-      defer.resolve(msg)
-    } else {
-      defer.reject(msg)
-    }
-  }
-
-  private checkOutServer(msg: Message, from: number) {
-    const client = this.clientDict[from]
-    if (!client) { return }
-    const server = this.serverDict[client.server]
-    if (!server || !server.queues[from] || !server.queues[from][msg.id]) { return }
-    const defer = server.queues[from][msg.id]
-    delete server.queues[from][msg.id]
-    defer.isTimeout || clearTimeout(defer.timer)
-    if (msg.result === MessageResults.Ok) {
-      defer.resolve(msg)
-    } else {
-      defer.reject(msg)
-    }
   }
 
   private handleServerMessage(data: Buffer, from: number) {
-    const server = this.serverDict[from]
-    if (!server) { return }
-    const msg = parseBrokerMessage(data)
-    switch (msg.kind) {
-      case MessageKinds.ServerRequest:
-        const d = new Deferred<BrokerMessage>(this.options.responseTimeout, () => {
-          this.checkOutServer(Object.assign({}, msg, {
-            kind   : MessageKinds.ClientResponse,
-            result : MessageResults.Timeout,
-            payload: void 0,
-          }), msg.clientId)
-        })
-        d.promise.catch((err) => {
-          if (!err || !err.result) {
-            err = <Message>{ result: MessageResults.Unknown, payload: void 0 }
-          }
-          return err
-        }).then((data) => this.sendToServer(from, Object.assign({}, msg, data)))
-        server.queues[msg.clientId][msg.id] = d
-        break
-      case MessageKinds.ServerResponse:
-        this.checkOutClient(msg)
-        break
+    if (data.byteLength < 12) { return }
+    const client = data.readUInt32BE(0)
+    const kind   = data.readUInt8(4)
+    switch (kind) {
       case MessageKinds.CloseClient:
-        this.delClient(msg.clientId)
+        this.delClient(client)
         break
       default:
-        this.log.notice('received unknown kind<%s> message<%s> from server<%s>',
-          msg.kind,
-          msg.id,
-          from)
+        this.sendToClient(data, from)
         break
     }
   }
@@ -253,33 +217,6 @@ export class Broker {
   private handleClientMessage(data: Buffer, from: number) {
     const client = this.clientDict[from]
     if (!client) { return }
-    const msg = parseMessage(data)
-    switch (msg.kind) {
-      case MessageKinds.ClientRequest:
-        const d = new Deferred<BrokerMessage>(this.options.responseTimeout, () => {
-          this.checkOutClient(Object.assign({}, msg, {
-            kind   : MessageKinds.ServerResponse,
-            result : MessageResults.Timeout,
-            payload: void 0,
-          }))
-        })
-        d.promise.catch((err) => {
-          if (!err || !err.result) {
-            err = <BrokerMessage>{ result: MessageResults.Unknown, payload: void 0 }
-          }
-          return err
-        }).then((data) => this.sendToClient(client.id, Object.assign({}, msg, data)))
-        client.queue[msg.id] = d
-        break
-      case MessageKinds.ClientResponse:
-        this.checkOutServer(msg, from)
-        break
-      default:
-        this.log.notice('received unknown kind<%s> message<%s> from client<%s>',
-          msg.kind,
-          msg.id,
-          from)
-        break
-    }
+    this.sendToServer(client.server, data, from)
   }
 }

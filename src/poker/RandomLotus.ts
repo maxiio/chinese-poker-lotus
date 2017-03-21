@@ -9,11 +9,12 @@
  */
 
 
-import { BaseCards, SeatCards, PokerCard, Seats } from './types'
-import { REAL_SEATS, SEAT_CARD_SIZE } from './consts'
-import { getInitialCards } from './utils'
 import { Lotus } from './Lotus'
-import { random } from '../shared/utils'
+import { createNMap, random } from '../shared/utils'
+import { PokerCard, Seats } from './types'
+import { getInitialCards } from './utils'
+import { REAL_SEATS, SEAT_CARD_SIZE } from './constants'
+
 
 export class RandomLotus extends Lotus {
   constructor() { super() }
