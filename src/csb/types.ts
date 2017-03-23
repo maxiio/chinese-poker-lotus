@@ -8,28 +8,14 @@
  * @desc types.ts
  */
 
-
-import { Deferred } from '../shared/Deferred'
+// message kinds
 export enum MessageKinds {
-  ClientRequest   = 0x00,
-  ServerResponse  = 0x01,
-  ServerRequest   = 0x02,
-  ClientResponse  = 0x03,
+  Request   = 0x1,
+  Response  = 0x2,
 
-  ClientConnected = 0x10,
-  ClientClosed    = 0x11,
-  CloseClient     = 0x12,
-}
-
-export enum MessageResults {
-  Reserved       = 0x00,
-  Ok             = 0x7F,
-  Unknown        = 0x10,
-  NotFoundTarget = 0x11,
-  NotFoundAction = 0x12,
-  WriteError     = 0x13,
-  Timeout        = 0x14,
-  ParseError     = 0x15,
+  Connected = 0xD,
+  Closed    = 0xE,
+  Close     = 0xF,
 }
 
 export enum MessageEncodings {
@@ -37,46 +23,56 @@ export enum MessageEncodings {
   String     = 1,
   Json       = 2,
   UrlEncoded = 3,
-  FormData   = 4,
+  Base64     = 4,
 }
 
-export interface RequestOptions {
-  id?: number;
-  to?: number;
-  action: number;
-  data: any;
+export enum ReservedResults {
+  Ok              = 0x00, // OK and reserved for other message kinds
+
+  NotFound        = 0xC9, // no action to handle this request
+  Timeout         = 0xCA, // action handle timeout
+  EncodingError   = 0xCB, // could not parse payload according to encoding
+  BadRequest      = 0xCC, // payload is incorrect
+  Unauthorized    = 0xCD, // need to login
+  Forbidden       = 0xCE, // forbid to access this action
+  TooManyRequests = 0xCF, // too many request
+  InternalError   = 0xD0, // action throws error
+  PayloadTooLarge = 0xD1, // payload too large
 }
 
-export interface ResponseOptions {
-  result: MessageResults;
-  data: any;
-}
-
+// common message structure
 export interface Message {
-  client?: number;
-  kind: number;
-  result: MessageResults;
-  id: number;
-  action: number;
-  payload: Buffer;
+  client?: number; // target client, just for server and broker
+  encoding?: MessageEncodings;
+  kind?: number; // message kind
+  result?: number; // result for response kind
+  id?: number; // message id
+  action?: number; // target action
+  payload?: Buffer; // raw payload
   data?: any;
 }
 
-export interface CsbError {
-  result: MessageResults;
-  raw?: Error;
+export interface Responser {
+  readonly request: Message;
+  timeout: number;
+  isTimeout: boolean;
+  isSent: boolean;
+  result: number;
+  setResult(result: number): this;
+  setTimeout(timeout: number): this;
+  send(data: any, encoding?: MessageEncodings): Promise<void>;
 }
 
-export type ErrorFunc = (error: CsbError) => void
+// signature of action function
+export type ActionFunc = (man: Responser) => void
 
-export type ActionFunc = (msg: Message) => Promise<ResponseOptions>
-
-export interface CsbAction {
-  action?: number;
-  encoding: MessageEncodings;
-  handler: ActionFunc;
-}
-
-export interface RequestHolder extends Deferred<Message> {
-  encoding?: MessageEncodings;
+export enum SenderErrors {
+  NotFoundTarget   = 0x100,
+  WriteError       = 0x102,
+  Unknown          = 0x103,
+  ParseMessage     = 0x104,
+  ParsePayload     = 0x105,
+  StringifyPayload = 0x106,
+  RequestTimeout   = 0x107,
+  RepeatSend       = 0x108,
 }

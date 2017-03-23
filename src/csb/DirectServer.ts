@@ -11,7 +11,6 @@
 
 import { Server, ServerOptions } from './Server'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
-import { parseMessage } from './utils'
 import WebSocket = require('ws')
 
 
@@ -42,11 +41,7 @@ export class DirectServer extends Server {
       const id = this.clientIdPool.alloc()
       this.addClient(id, ws.upgradeReq.headers, ws)
       ws.on('close', () => this.delClient(id))
-      ws.on('message', (data: Buffer) => {
-        const msg  = parseMessage(data, false)
-        msg.client = id
-        this.handleMessage(msg)
-      })
+      ws.on('message', (data: Buffer) => this.handleMessage(data, id))
     })
     this.server = server
   }

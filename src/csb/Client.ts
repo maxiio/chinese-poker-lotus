@@ -10,10 +10,8 @@
 
 
 import { DuplexOptions, Duplex } from './Duplex'
-import { MessageKinds } from './types'
 import { UINT16_MAX_VALUE } from '../shared/constants'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
-import { parseMessage } from './utils'
 import WebSocket = require('ws')
 
 
@@ -22,12 +20,6 @@ export class Client extends Duplex {
   readonly midPool = new UniqueIdPool(0, UINT16_MAX_VALUE, void 0, true)
 
   readonly withClient = false
-
-  readonly requestKind  = MessageKinds.ClientRequest
-  readonly responseKind = MessageKinds.ClientResponse
-
-  readonly acceptRequestKind  = MessageKinds.ServerRequest
-  readonly acceptResponseKind = MessageKinds.ServerResponse
 
   getWs() { return this.ws }
 
@@ -42,11 +34,7 @@ export class Client extends Duplex {
     const { protocol, targetHost, targetPort } = options
 
     const ws = new WebSocket(`${protocol}://${targetHost}:${targetPort}/`)
-    ws.on('message', (data: Buffer) => {
-      if (data.byteLength < 8) { return }
-      const msg = parseMessage(data)
-      this.handleMessage(msg)
-    })
+    ws.on('message', (data: Buffer) => this.handleMessage(data))
     this.ws = ws
   }
 }

@@ -10,7 +10,6 @@
 
 import { createNMap, splice, NMap } from '../shared/utils'
 import { Duplex, DuplexOptions } from './Duplex'
-import { MessageKinds } from './types'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
 import { UINT16_MAX_VALUE } from '../shared/constants'
 import WebSocket = require('ws')
@@ -32,12 +31,6 @@ export abstract class Server extends Duplex {
   protected clientDict = createNMap<ClientInstance>()
   protected clientList = new Array<ClientInstance>(0)
 
-  readonly requestKind  = MessageKinds.ServerRequest
-  readonly responseKind = MessageKinds.ServerResponse
-
-  readonly acceptRequestKind  = MessageKinds.ClientRequest
-  readonly acceptResponseKind = MessageKinds.ClientResponse
-
   getMid(target: number) {
     return this.clientDict[target] ? this.clientDict[target].midPool.alloc() : 0
   }
@@ -46,7 +39,7 @@ export abstract class Server extends Duplex {
 
   protected addClient(id: number, headers: NMap<string>, ws?: WebSocket) {
     if (this.clientDict[id] && this.clientDict[id].ws && this.clientDict[id].ws !== ws) {
-      this.delClient(id)
+      this.closeRemote(id)
     }
     const midPool  = new UniqueIdPool(0, UINT16_MAX_VALUE, void 0, true)
     const instance = <ClientInstance>{ id, headers, ws, midPool }
@@ -61,7 +54,6 @@ export abstract class Server extends Duplex {
     if (!instance) { return this }
     delete this.clientDict[id]
     splice(this.clientList, instance)
-    this.closeRemote(id)
     this.emit('close', instance)
     return this
   }

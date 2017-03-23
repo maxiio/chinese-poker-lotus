@@ -13,8 +13,8 @@ import WebSocket = require('ws')
 import { Log } from '../shared/Log'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
 import { createNMap, splice, random } from '../shared/utils'
-import { stringifyMessage, stringifyPayload } from './utils'
-import { MessageKinds, MessageResults, Message, MessageEncodings } from './types'
+import { stringifyMessage } from './utils'
+import { MessageKinds, ReservedResults, Message } from './types'
 
 
 export interface BrokerOptions {
@@ -110,8 +110,8 @@ export class Broker {
     server.clients.push(id)
     this.sendToServer(server.id, {
       client : id,
-      kind   : MessageKinds.ClientConnected,
-      result : MessageResults.Reserved,
+      kind   : MessageKinds.Connected,
+      result : ReservedResults.Ok,
       id     : 0,
       action : 0,
       payload: void 0,
@@ -140,8 +140,8 @@ export class Broker {
     splice(server.clients, id)
     this.sendToServer(server.id, {
       client : id,
-      kind   : MessageKinds.ClientClosed,
-      result : MessageResults.Reserved,
+      kind   : MessageKinds.Closed,
+      result : ReservedResults.Ok,
       id     : 0,
       action : 0,
       payload: void 0,
@@ -157,8 +157,15 @@ export class Broker {
     if (!server) { return }
     let data: Buffer
     if (!Buffer.isBuffer(msg)) {
-      msg.payload = stringifyPayload(msg.data, MessageEncodings.Json)
-      data        = stringifyMessage(msg, true)
+      data =
+        stringifyMessage(msg.kind,
+          msg.encoding,
+          msg.result,
+          msg.id,
+          msg.action,
+          msg.payload,
+          msg.data,
+          msg.client || from || 0)
     } else {
       const head = Buffer.alloc(4)
       head.writeUInt32BE(from, 0)
@@ -193,7 +200,7 @@ export class Broker {
         )
       } else {
         this.log.debug(
-          'sent kind<%H> of mesage<%d> from server<%d> to client<%d>',
+          'sent kind<%H> of message<%d> from server<%d> to client<%d>',
           data.readUInt8(4), data.readUInt16BE(6), from, id,
         )
       }
@@ -201,11 +208,11 @@ export class Broker {
   }
 
   private handleServerMessage(data: Buffer, from: number) {
-    if (data.byteLength < 12) { return }
+    if (!Buffer.isBuffer(data) || data.byteLength < 12) { return }
     const client = data.readUInt32BE(0)
-    const kind   = data.readUInt8(4)
+    const kind   = data.readUInt8(4) >> 4
     switch (kind) {
-      case MessageKinds.CloseClient:
+      case MessageKinds.Close:
         this.delClient(client)
         break
       default:
@@ -215,6 +222,7 @@ export class Broker {
   }
 
   private handleClientMessage(data: Buffer, from: number) {
+    if (!Buffer.isBuffer(data) || data.byteLength < 8) { return }
     const client = this.clientDict[from]
     if (!client) { return }
     this.sendToServer(client.server, data, from)

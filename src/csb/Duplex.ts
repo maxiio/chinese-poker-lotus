@@ -9,54 +9,127 @@
  */
 
 
+import { Log } from '../shared/Log'
+import { EventEmitter } from 'events'
+import {
+  ActionFunc,
+  Message,
+  ReservedResults,
+  MessageKinds,
+  MessageEncodings,
+  SenderErrors
+} from './types'
 import { NMap, createSMap, SMap } from '../shared/utils'
 import { Deferred } from '../shared/Deferred'
-import { EventEmitter } from 'events'
-import { Log } from '../shared/Log'
-import {
-  Message,
-  CsbAction,
-  ErrorFunc,
-  MessageEncodings,
-  ActionFunc,
-  ResponseOptions,
-  MessageResults,
-  MessageKinds,
-  RequestOptions,
-  RequestHolder
-} from './types'
-import { parsePayload, stringifyPayload, stringifyMessage } from './utils'
+import { stringifyMessage, parseMessage } from './utils'
+import { SockError } from './SockError'
 import WebSocket = require('ws')
 
 
-export interface DuplexOptions {
-  targetHost: string;
-  targetPort: number;
-  timeout: number;
-  pingTimeout: number;
-  protocol: string;
-  log: Log
+export class Responser implements Responser {
+  readonly request: Message
+  private timer: number
+  private _timeout: number
+  get timeout() { return this._timeout }
+
+  private _isTimeout: boolean
+  get isTimeout() { return this._isTimeout }
+
+  private _isSent: boolean
+  get isSent() { return this._isSent }
+
+  private _result: number
+  get result() { return this._result }
+
+  setResult(result: number) {
+    if (this._isSent) { return this }
+    this._result = result
+    return this
+  }
+
+  setTimeout(timeout: number) {
+    if (this._isSent) { return this }
+    this._timeout = timeout
+    this.timer && clearTimeout(this.timer)
+    timeout > 0 && (this.timer = setTimeout(() => {
+      this._isTimeout = true
+      this.setResult(ReservedResults.Timeout).send()
+    }, timeout) as any)
+    return this
+  }
+
+  private target: number
+  private worker: Duplex
+
+  constructor(request: Message, timeout: number, target: number, worker: Duplex) {
+    this.request = request
+    this.target  = target
+    this.worker  = worker
+    this._result = ReservedResults.Ok
+    this.setTimeout(timeout)
+  }
+
+  send(data?: any, encoding?: MessageEncodings): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      if (this._isSent || this._isTimeout) {
+        reject(new SockError(
+          'Cannot re-send response when the message is sent or is timeout',
+          SenderErrors.RepeatSend, void 0, void 0, void 0, void 0, void 0,
+        ))
+        return
+      }
+      this.worker.send({
+        client  : this.worker.withClient ? this.target : void 0,
+        kind    : MessageKinds.Response,
+        encoding: encoding,
+        result  : this._result,
+        id      : this.request.id,
+        action  : this.request.action,
+        payload : void 0,
+        data    : data,
+      }, this.target, (err) => {
+        if (err) {
+          reject(err)
+        } else {
+          this._isSent = true
+          resolve(void 0)
+        }
+      })
+    })
+  }
 }
 
-export abstract class Duplex extends EventEmitter {
-  protected actions: NMap<CsbAction>
-  protected requests: SMap<RequestHolder> = createSMap<RequestHolder>()
-  readonly log: Log
+export interface DuplexOptions {
+  targetHost: string;   // the host to connect or listen
+  targetPort: number;   // the port to connect or listen
+  timeout: number;      // action handle timeout and wait for response timeout
+  pingTimeout: number;  // ping timeout
+  protocol: string;     // protocol, ws or wss, TODO
+  log: Log;             // the logger
+}
 
+
+export abstract class Duplex extends EventEmitter {
+  // registered actions
+  protected actions: NMap<ActionFunc>
+  // request timers
+  protected requests: SMap<Deferred<Message>> = createSMap<Deferred<Message>>()
+  // logger
+  readonly log: Log
+  // the message header contains client id or not
+  // only for broker server
   abstract readonly withClient: boolean
 
-  abstract readonly requestKind: MessageKinds
-  abstract readonly responseKind: MessageKinds
-
-  abstract readonly acceptRequestKind: MessageKinds
-  abstract readonly acceptResponseKind: MessageKinds
-
+  // get socket by target id
   abstract getWs(target: number): WebSocket
 
+  // get next message id
   abstract getMid(target: number): number
 
+  // close self
   abstract closeSelf(): void
 
+  // close remote, only for server
   abstract closeRemote(id: number): void
 
   constructor(
@@ -66,142 +139,156 @@ export abstract class Duplex extends EventEmitter {
     this.log = options.log
   }
 
-  addAction(action: number, encoding: MessageEncodings, handler: ActionFunc) {
-    if (this.actions[action]) {
+  addAction(id: number, action: ActionFunc) {
+    if (this.actions[id]) {
       throw new Error('Action is already used!')
     }
-    this.actions[action] = { action, encoding, handler }
+    this.actions[id] = action
     return this
   }
 
-  addActions(actions: NMap<CsbAction>) {
-    for (const action in actions) {
-      this.addAction(+action, actions[action].encoding, actions[action].handler)
+  addActions(actions: NMap<ActionFunc>) {
+    for (const id in actions) {
+      this.addAction(+id, actions[id])
     }
     return this
   }
 
-  send(msg: Message, encoding?: MessageEncodings, callback?: ErrorFunc) {
-    const ws = this.getWs(msg.client)
+  /**
+   * send a message to target socket
+   * @param msg - the message to send
+   * @param target - the target socket id
+   * @param callback - callback
+   */
+  send(msg: Message, target?: number, callback?: (err: SockError) => void) {
+    let data: Buffer
+    try {
+      data = stringifyMessage(msg.kind,
+        msg.encoding,
+        msg.result,
+        msg.id,
+        msg.action,
+        msg.payload,
+        msg.data,
+        this.withClient ? msg.client || 0 : void 0)
+    } catch (e) {
+      callback(e)
+      return void 0
+    }
+    const ws = this.getWs(target)
     if (!ws) {
-      callback({ result: MessageResults.NotFoundTarget })
-      return this
+      callback(new SockError('Not found target socket!', SenderErrors.NotFoundTarget, void 0, void 0, void 0, msg, data))
+      return data
     }
-    Buffer.isBuffer(msg.payload)
-    || (msg.payload = stringifyPayload(msg.payload || msg.data, encoding))
-    ws.send(stringifyMessage(msg, this.withClient), (err) => {
+    ws.send(msg, (err) => {
       if (err) {
-        this.log.error('send kind<%H> of message<%d> to client<%s> error: %s',
+        this.log.error('send kind<%H> of message<%d> to socket<%d> error: %s',
           msg.kind,
           msg.id,
-          msg.client,
+          target,
           err)
-        callback({ result: MessageResults.WriteError, raw: err })
       } else {
-        this.log.debug('sent kind<%H> of message<%d> to client<%s>',
+        this.log.debug('sent kind<%H> of message<%d> to socket<%d>',
           msg.kind,
           msg.id,
-          msg.client)
-        callback({ result: MessageResults.Ok })
+          target)
       }
+      callback(new SockError('Socket write error', SenderErrors.WriteError, void 0, void 0, err, msg, data))
     })
-    return this
+    return data
   }
 
-  protected response(msg: Message) {
-    const d: Deferred<ResponseOptions> = new Deferred<ResponseOptions>(
-      this.options.timeout, () => d.reject({
-        result: MessageResults.Timeout,
-        data  : void 0,
-      })
-    )
+  protected getMsgIdentifier(client: number, id: number) {
+    return `${client || 0}_${id || 0}`
+  }
 
+  request(msg: Message, target?: number): Promise<Message> {
+    // prepare request message
+    msg.client = this.withClient ? target : void 0
+    msg.kind   = MessageKinds.Request
+    msg.encoding === void 0 && (msg.encoding = MessageEncodings.Json)
+    msg.result = ReservedResults.Ok
+    msg.id === void 0 && (msg.id = this.getMid(target))
+
+    // local variables
+    const qid = this.getMsgIdentifier(target, msg.id)
+    let sent: Buffer
+    let holder: Deferred<Message>
+
+    // holder
+    holder = new Deferred<Message>(this.options.timeout, () => {
+      holder.reject(new SockError('Request timeout', SenderErrors.RequestTimeout, void 0, void 0, void 0, msg, sent))
+    })
+
+    this.requests[qid] = holder
+
+    // clear holder
+    holder.promise.then(() => delete this.requests[qid], () => delete this.requests[qid])
+
+    // do request
+    this.send(msg, target, (err) => err && holder.reject(err))
+
+    return holder.promise
+  }
+
+  protected response(msg: Message, from: number) {
+    const man    = new Responser(msg, this.options.timeout, from, this)
     const action = this.actions[msg.action]
-    if (action) {
-      msg.data = parsePayload(msg.payload, action.encoding)
-      d.resolve(action.handler(msg))
-    } else {
-      d.reject({
-        result: MessageResults.NotFoundAction,
-        data  : void 0,
-      })
+    if (!action) {
+      man.setResult(ReservedResults.NotFound).send()
+      return
     }
-    return d.promise.then((data: ResponseOptions) => ({
-      result: data && data.result ? data.result : MessageResults.Ok,
-      data  : data && data.data ? data.data : void 0,
-    }), (err: ResponseOptions) => ({
-      result: err && err.result ? err.result : MessageResults.Unknown,
-      data  : err && err.data ? err.data : void 0,
-    })).then((data: ResponseOptions) => this.send({
-      client : msg.client,
-      kind   : this.responseKind,
-      result : data.result,
-      id     : msg.id,
-      action : msg.action,
-      payload: void 0,
-      data   : data.data,
-    }, action ? action.encoding : void 0))
+    action(man)
+    return man
   }
 
-  protected getMsgIdentifier(msg: Message) {
-    return `${msg.client || 0}_${msg.id || 0}`
-  }
-
-  request(
-    options: RequestOptions,
-    encoding = MessageEncodings.Json,
-    responseEncoding = encoding,
-  ): Promise<Message> {
-    const msg  = <Message>{
-      client : options.to || 0,
-      kind   : this.requestKind,
-      result : MessageResults.Reserved,
-      id     : options.id || this.getMid(options.to),
-      action : options.action,
-      payload: void 0,
-      data   : options.data,
-    }
-    const id   = this.getMsgIdentifier(msg)
-    const d    = new Deferred<Message>(this.options.timeout, () => {
-      // timeout remove holder
-      delete this.requests[id]
-      d.reject(Object.assign({}, msg, {
-        result : MessageResults.Timeout,
-        payload: void 0,
-      }))
-    }) as RequestHolder
-    d.encoding = responseEncoding
-    this.send(msg, encoding, (err) => {
-      if (err.result !== MessageResults.Ok) {
-        d.reject(Object.assign({}, msg, err))
+  protected handleMessage(data: Buffer, from?: number) {
+    let msg: Message
+    try {
+      msg = parseMessage(data, this.withClient)
+    } catch (e) {
+      if (e && e.isSockError && e.code === SenderErrors.ParsePayload) {
+        this.send({
+          client  : from,
+          kind    : MessageKinds.Response,
+          encoding: MessageEncodings.Binary,
+          result  : ReservedResults.EncodingError,
+          id      : e.request.id,
+          action  : e.request.action,
+          payload : void 0,
+        }, from)
       }
-    })
-    d.promise.then(() => delete this.requests[id], () => delete this.requests[id])
-    this.requests[id] = d
-    return d.promise
+      this.log.notice('parse incoming message emit unknown error<%s> with<%s>', e,
+        Buffer.isBuffer(data)
+          ? data.slice(0, 12).toJSON().data.map((x) => x.toString(16)).join(',')
+          : data)
+      return
+    }
+    this.routeMessage(msg, from)
   }
 
-  protected handleMessage(msg: Message) {
+  protected routeMessage(msg: Message, from?: number) {
+    from === void 0 && this.withClient && (from = msg.client)
     switch (msg.kind) {
-      case this.acceptResponseKind:
-        const id = this.getMsgIdentifier(msg)
-        if (this.requests[id]) {
-          // receive message delete holder
-          // and clear timeout, if is not
-          // timeout
-          const holder = this.requests[id]
-          delete this.requests[id]
-          holder.clearTimeout()
-          msg.data = parsePayload(msg.payload, holder.encoding)
-          holder.resolve(msg)
+      case MessageKinds.Response:
+        const qid = this.getMsgIdentifier(from, msg.id)
+        if (this.requests[qid]) {
+          const holder = this.requests[qid]
+          delete this.requests[qid]
+          holder.clearTimeout().resolve(msg)
         }
+        // omit response if there is no request queue for it
         break
-      case this.acceptRequestKind:
-        this.response(msg)
+      case MessageKinds.Request:
+        this.response(msg, from)
         break
       default:
-        this.log.notice('received unknown message<%H> kind<%H>', msg.id, msg.kind)
+        this.log.notice('received unknown kind<%H> of message<%H> from<%H>',
+          msg.kind,
+          msg.id,
+          from)
         break
     }
   }
 }
+

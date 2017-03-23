@@ -10,8 +10,7 @@
 
 
 import { ServerOptions, Server } from './Server'
-import { parseMessage } from './utils'
-import { MessageKinds, MessageResults, Message } from './types'
+import { MessageKinds, ReservedResults, Message, MessageEncodings } from './types'
 import WebSocket = require('ws')
 
 
@@ -25,13 +24,15 @@ export class BrokerServer extends Server {
   closeSelf() { this.ws.close() }
 
   closeRemote(id: number) {
+    this.delClient(id)
     this.send({
-      client : id,
-      kind   : MessageKinds.CloseClient,
-      result : MessageResults.Reserved,
-      id     : 0,
-      action : 0,
-      payload: void 0,
+      client  : id,
+      kind    : MessageKinds.Close,
+      encoding: MessageEncodings.Binary,
+      result  : ReservedResults.Ok,
+      id      : 0,
+      action  : 0,
+      payload : void 0,
     })
   }
 
@@ -40,21 +41,21 @@ export class BrokerServer extends Server {
     const { protocol, targetHost, targetPort } = options
 
     const ws = new WebSocket(`${protocol}://${targetHost}:${targetPort}/`)
-    ws.on('message', (data: Buffer) => this.handleMessage(parseMessage(data, true)))
+    ws.on('message', (data: Buffer) => this.handleMessage(data))
     this.ws = ws
   }
 
-  protected handleMessage(msg: Message) {
+  protected routeMessage(msg: Message) {
     switch (msg.kind) {
-      case MessageKinds.ClientConnected:
-        const headers = JSON.parse(msg.payload.toString('utf8')).headers || {}
-        this.addClient(msg.client, headers)
+      case MessageKinds.Connected:
+        this.addClient(msg.client, msg.data ? msg.data.headers : {})
         break
-      case MessageKinds.ClientClosed:
+      case MessageKinds.Closed:
         this.delClient(msg.client)
         break
       default:
-        super.handleMessage(msg)
+        super.routeMessage(msg, msg.client)
+        break
     }
   }
 }
