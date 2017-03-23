@@ -36,11 +36,16 @@ export class DirectServer extends Server {
     const server = new WebSocket.Server({
       host: options.targetHost,
       port: options.targetPort,
+    }, () => {
+      this.log.log('server is listening at %s:%s', options.targetHost, options.targetPort)
     })
     server.on('connection', (ws) => {
       const id = this.clientIdPool.alloc()
       this.addClient(id, ws.upgradeReq.headers, ws)
-      ws.on('close', () => this.delClient(id))
+      ws.on('close', () => {
+        this.delClient(id)
+        this.clientIdPool.free(id)
+      })
       ws.on('message', (data: Buffer) => this.handleMessage(data, id))
     })
     this.server = server

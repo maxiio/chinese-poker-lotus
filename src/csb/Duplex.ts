@@ -17,7 +17,8 @@ import {
   ReservedResults,
   MessageKinds,
   MessageEncodings,
-  SenderErrors
+  SenderErrors,
+  Responser
 } from './types'
 import { NMap, createSMap, SMap } from '../shared/utils'
 import { Deferred } from '../shared/Deferred'
@@ -26,8 +27,9 @@ import { SockError } from './SockError'
 import WebSocket = require('ws')
 
 
-export class Responser implements Responser {
+class SockResponser implements Responser {
   readonly request: Message
+  readonly from: number
   private timer: number
   private _timeout: number
   get timeout() { return this._timeout }
@@ -58,12 +60,11 @@ export class Responser implements Responser {
     return this
   }
 
-  private target: number
   private worker: Duplex
 
-  constructor(request: Message, timeout: number, target: number, worker: Duplex) {
+  constructor(request: Message, timeout: number, from: number, worker: Duplex) {
     this.request = request
-    this.target  = target
+    this.from    = from
     this.worker  = worker
     this._result = ReservedResults.Ok
     this.setTimeout(timeout)
@@ -79,7 +80,7 @@ export class Responser implements Responser {
         return
       }
       this.worker.send({
-        client  : this.worker.withClient ? this.target : void 0,
+        client  : this.worker.withClient ? this.from : void 0,
         kind    : MessageKinds.Response,
         encoding: encoding,
         result  : this._result,
@@ -87,7 +88,7 @@ export class Responser implements Responser {
         action  : this.request.action,
         payload : void 0,
         data    : data,
-      }, this.target, (err) => {
+      }, this.from, (err) => {
         if (err) {
           reject(err)
         } else {
@@ -139,6 +140,13 @@ export abstract class Duplex extends EventEmitter {
     this.log = options.log
   }
 
+  /**
+   * @param id - A action id length is 32 bit, we can use the first 16 bit as module id
+   * and use the remains 16 bit as action id for specified module, for split project to
+   * multiple modules.
+   * @param action
+   * @return {Duplex}
+   */
   addAction(id: number, action: ActionFunc) {
     if (this.actions[id]) {
       throw new Error('Action is already used!')
@@ -202,7 +210,14 @@ export abstract class Duplex extends EventEmitter {
     return `${client || 0}_${id || 0}`
   }
 
-  request(msg: Message, target?: number): Promise<Message> {
+  /**
+   * @param msg
+   * @param target
+   * @param hold - if not hold, will not wait for the target response, and resolve
+   *      immediately when socket write success, else will wait for it until timeout.
+   * @return {Promise<Message>}
+   */
+  request(msg: Message, target?: number, hold = true): Promise<Message> {
     // prepare request message
     msg.client = this.withClient ? target : void 0
     msg.kind   = MessageKinds.Request
@@ -220,26 +235,31 @@ export abstract class Duplex extends EventEmitter {
       holder.reject(new SockError('Request timeout', SenderErrors.RequestTimeout, void 0, void 0, void 0, msg, sent))
     })
 
-    this.requests[qid] = holder
-
-    // clear holder
-    holder.promise.then(() => delete this.requests[qid], () => delete this.requests[qid])
-
+    if (hold) {
+      this.requests[qid] = holder
+      // clear holder
+      holder.promise.then(
+        () => delete this.requests[qid],
+        () => delete this.requests[qid],
+      )
+    }
     // do request
-    this.send(msg, target, (err) => err && holder.reject(err))
+    this.send(msg, target, (err) => {
+      err ? holder.reject(err) : hold ? void 0 : holder.resolve(void 0)
+    })
 
     return holder.promise
   }
 
   protected response(msg: Message, from: number) {
-    const man    = new Responser(msg, this.options.timeout, from, this)
+    const man    = new SockResponser(msg, this.options.timeout, from, this)
     const action = this.actions[msg.action]
     if (!action) {
       man.setResult(ReservedResults.NotFound).send()
       return
     }
     action(man)
-    return man
+    return <Responser>man
   }
 
   protected handleMessage(data: Buffer, from?: number) {

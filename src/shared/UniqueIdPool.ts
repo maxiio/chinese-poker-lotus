@@ -34,11 +34,11 @@ export class UniqueIdPool {
       }
       this.nextStart = this.start
     }
-    const max = Math.min(this.max - this.nextStart, this.poolSize)
-    for (let i = 0; i < max; i++) {
-      this.pool.push(this.nextStart + i)
+    const max = Math.min(this.max + 1, this.nextStart + this.poolSize)
+    for (let i = this.nextStart; i < max; i++) {
+      this.pool.push(i)
     }
-    this.nextStart += max
+    this.nextStart = max
   }
 
   alloc() {
@@ -49,5 +49,13 @@ export class UniqueIdPool {
   free(id: number) {
     this.pool.indexOf(id) < 0 && this.nextStart > id && this.pool.push(id)
     return this
+  }
+}
+
+if (!module.parent) {
+  const pool = new UniqueIdPool(0, 10, 3, false)
+  for (let i = -1; i < 20; i++) {
+    console.log(pool.alloc())
+    pool.free(i)
   }
 }

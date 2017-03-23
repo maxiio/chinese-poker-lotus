@@ -90,6 +90,19 @@ function tryStringify(arg: any) {
   }
 }
 
+export function lpad(str = '', size = 2, char = '0') {
+  for (let i = str.length; i < size; i++) {
+    str = char + str
+  }
+  return str
+}
+
+export function rpad(str = '', size = 2, char = '0') {
+  for (let i = str.length; i < size; i++) {
+    str += char
+  }
+  return str
+}
 
 /**
  *

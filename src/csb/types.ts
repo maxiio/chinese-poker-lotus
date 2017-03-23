@@ -54,13 +54,14 @@ export interface Message {
 
 export interface Responser {
   readonly request: Message;
-  timeout: number;
-  isTimeout: boolean;
-  isSent: boolean;
-  result: number;
+  readonly timeout: number;
+  readonly isTimeout: boolean;
+  readonly isSent: boolean;
+  readonly result: number;
+  readonly from: number;
   setResult(result: number): this;
   setTimeout(timeout: number): this;
-  send(data: any, encoding?: MessageEncodings): Promise<void>;
+  send(data?: any, encoding?: MessageEncodings): Promise<void>;
 }
 
 // signature of action function

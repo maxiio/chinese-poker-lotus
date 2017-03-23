@@ -8,7 +8,7 @@
  * @desc Server.ts
  */
 
-import { createNMap, splice, NMap } from '../shared/utils'
+import { createNMap, splice, SMap, NMap } from '../shared/utils'
 import { Duplex, DuplexOptions } from './Duplex'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
 import { UINT16_MAX_VALUE } from '../shared/constants'
@@ -22,14 +22,13 @@ export interface ServerOptions extends DuplexOptions {
 export interface ClientInstance {
   id: number;
   ws?: WebSocket;
-  headers: NMap<string>;
+  headers: SMap<string>;
   midPool: UniqueIdPool;
 }
 
-
 export abstract class Server extends Duplex {
-  protected clientDict = createNMap<ClientInstance>()
-  protected clientList = new Array<ClientInstance>(0)
+  protected clientDict: NMap<ClientInstance> = createNMap<ClientInstance>()
+  protected clientList: ClientInstance[]     = []
 
   getMid(target: number) {
     return this.clientDict[target] ? this.clientDict[target].midPool.alloc() : 0
@@ -37,7 +36,7 @@ export abstract class Server extends Duplex {
 
   constructor(options: ServerOptions) { super(options) }
 
-  protected addClient(id: number, headers: NMap<string>, ws?: WebSocket) {
+  protected addClient(id: number, headers: SMap<string>, ws?: WebSocket) {
     if (this.clientDict[id] && this.clientDict[id].ws && this.clientDict[id].ws !== ws) {
       this.closeRemote(id)
     }
@@ -46,6 +45,9 @@ export abstract class Server extends Duplex {
     this.clientList.push(instance)
     this.clientDict[id] = instance
     this.emit('connect', instance)
+    this.log.log('new connection<%H> from IP:%s',
+      id,
+      ws ? ws.upgradeReq.connection.remoteAddress : '0.0.0.0')
     return this
   }
 
@@ -55,12 +57,9 @@ export abstract class Server extends Duplex {
     delete this.clientDict[id]
     splice(this.clientList, instance)
     this.emit('close', instance)
+    this.log.log('connection<%H> from IP:%s closed',
+      instance.id,
+      instance.ws ? instance.ws.upgradeReq.connection.remoteAddress : '0.0.0.0')
     return this
-  }
-
-  on(event: 'connect', callback: (client: ClientInstance) => void): this
-  on(event: 'close', callback: (client: ClientInstance) => void): this
-  on(event: string, callback: (...params: any[]) => void) {
-    return super.on(event, callback)
   }
 }

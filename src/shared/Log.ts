@@ -10,6 +10,7 @@
 
 
 import { createSMap, format } from './utils'
+import WritableStream = NodeJS.WritableStream
 
 
 export enum LogLevels {
@@ -25,9 +26,14 @@ const LOG_NAMES = createSMap<string>(<any>LogLevels)
 export class Log {
   private static instances = createSMap<Log>()
 
-  get(id: string) {
+  static get(
+    id: string,
+    level?: LogLevels,
+    stdout?: WritableStream,
+    stderr?: WritableStream,
+  ) {
     if (!Log.instances[id]) {
-      Log.instances[id] = new Log(id)
+      Log.instances[id] = new Log(id, level, stdout, stderr)
     }
     return Log.instances[id]
   }
@@ -46,7 +52,7 @@ export class Log {
     const target = stderr ? this.stderr : this.stdout
     const date   = new Date
     const msg    = format(fmt, ...param)
-    target.write(`[${this.id} ${LOG_NAMES[level]} ${date.toLocaleDateString()} ${date.toLocaleTimeString()}] ${msg}\n`)
+    target.write(`[${this.id} ${date.toLocaleDateString()} ${date.toLocaleTimeString()} ${LOG_NAMES[level]}] ${msg}\n`)
     return this
   }
 
