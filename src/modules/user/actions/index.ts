@@ -15,7 +15,8 @@ import {
   CONF_FIELD_PASSWORD,
   CMD_USER_SIGN_IN,
   CMD_USER_SIGN_OUT,
-  CMD_USER_UPDATE
+  CMD_USER_UPDATE,
+  CMD_USER_SIGN_UP
 } from '../consts'
 import { UserModel } from '../models/types'
 import { UserService } from '../service'
@@ -31,18 +32,18 @@ function onConnect(client: ClientInstance) {
   let p: Promise<UserModel>
   if (id && password) {
     p = UserService.findAndVerify(id, password)
+      .then((user) => UserService.signIn(user.id))
   } else if (session) {
     p = UserService.findBySession(session)
   } else {
-    p = Promise.reject(new Error('Invalid Reuqest'))
+    p = Promise.reject(new Error('Invalid Request'))
   }
   p.then((user) => {
-    UserService.setSocket(user.id, socket)
-    if (!session) {
-      UserService.signIn(user.id)
-    }
+    return UserService.setSocket(user.id, socket)
+  }).then((user) => {
     Pusher.get().request({
       action: CMD_USER_SIGN_IN,
+      data  : user,
     }, socket, false)
   }, () => {
     Pusher.get().closeRemote(socket)
@@ -70,14 +71,44 @@ export function signOut(man: Responser) {
 // TODO check parameters in service
 // TODO omit useless and secret fields to output
 export function update(man: Responser) {
-  UserService.find(man.from)
-    .then((user) => UserService.update(user.id, man.request.data))
-    .then((user) => man.send(user, MessageEncodings.Json))
-    .catch((err) => man.setResult(ReservedResults.InternalError)
-      .send(err, MessageEncodings.Json))
+  UserService.find(man.from).then((user) => {
+    UserService.update(user.id, man.request.data)
+  }).then((user) => {
+    man.send(user, MessageEncodings.Json)
+  }, (err) => {
+    man.setResult(ReservedResults.InternalError)
+      .send(err, MessageEncodings.Json)
+  })
+}
+
+export function signUp(man: Responser) {
+  UserService.add({
+    socket: man.from,
+  }).then((user) => {
+    return UserService.signIn(user.id)
+  }).then((user) => {
+    man.send(user, MessageEncodings.Json)
+  }, (err) => {
+    man.setResult(ReservedResults.InternalError)
+      .send(err, MessageEncodings.Json)
+  })
+}
+
+export function signIn(man: Responser) {
+  const { id, password } = man.request || {} as any
+  UserService.findAndVerify(id, password).then((user) => {
+    return UserService.signIn(user.id)
+  }).then((user) => {
+    man.send(user, MessageEncodings.Json)
+  }, (err) => {
+    man.setResult(ReservedResults.InternalError)
+      .send(err, MessageEncodings.Json)
+  })
 }
 
 export const actions = {
-  [CMD_USER_SIGN_OUT]: signOut,
+  [CMD_USER_SIGN_UP] : signUp,
+  [CMD_USER_SIGN_IN] : signIn,
   [CMD_USER_UPDATE]  : update,
+  [CMD_USER_SIGN_OUT]: signOut,
 }

@@ -12,9 +12,10 @@
 import { NMap } from '../shared/utils'
 
 
+// avoid use 0 in module id and cmd id
 export const modules: NMap<string> = {
-  0x0000: 'user',
-  0x0001: 'game',
-  0x0002: 'test',
+  0x0001: 'user',
+  0x0002: 'game',
+  0x0003: 'test',
 }
 

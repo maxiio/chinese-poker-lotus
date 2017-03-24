@@ -9,11 +9,11 @@
  */
 
 
-export const MODULE_USER       = 0x0000
-export const CMD_USER_SIGN_UP  = 0x00000000
-export const CMD_USER_SIGN_IN  = 0x00000001
-export const CMD_USER_SIGN_OUT = 0x00000002
-export const CMD_USER_UPDATE   = 0x00000003
+export const MODULE_USER = 0x00010000
+export const CMD_USER_SIGN_UP  = 0x00010001
+export const CMD_USER_SIGN_IN  = 0x00010002
+export const CMD_USER_SIGN_OUT = 0x00010003
+export const CMD_USER_UPDATE   = 0x00010004
 
 export const CONF_FIELD_USER_ID  = 'x-user-id'
 export const CONF_FIELD_PASSWORD = 'x-password'

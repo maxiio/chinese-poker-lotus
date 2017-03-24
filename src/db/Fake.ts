@@ -49,6 +49,26 @@ export class Fake<T extends FakeModel> {
     return Fake.nss[id]
   }
 
+  private static updateIndex(id: number, data: any, remove: boolean) {
+    const fake    = (this as any as typeof Fake).ns()
+    const indexes = (this as any as typeof Fake).UNIQUE_INDEXES
+    if (remove) {
+      delete fake.dict[id]
+      indexes.forEach((index) => {
+        if (data[index]) {
+          delete fake.dicts[index][data[index]]
+        }
+      })
+    } else {
+      fake.dict[id] = data
+      indexes.forEach((index) => {
+        if (data[index]) {
+          fake.dicts[index][data[index]] = data
+        }
+      })
+    }
+  }
+
   static find(id: number): Promise<any> {
     const fake = (this as any as typeof Fake).ns()
     const old  = fake.dict[id]
@@ -67,24 +87,19 @@ export class Fake<T extends FakeModel> {
     const fake = (this as any as typeof Fake).ns()
     const old  = fake.dict[id]
     if (!old) { return Promise.reject(new Error('Not Found')) }
+    Fake.updateIndex(id, old, true)
     Object.assign(old, data)
-    splice(fake.list, old)
-    fake.list.push(old)
+    splice(fake.list, old).push(old)
+    Fake.updateIndex(id, old, false)
     return Promise.resolve(old)
   }
 
   static add(data: any, id?: number): Promise<any> {
     const fake = (this as any as typeof Fake).ns()
     id === void 0 && (id = fake.idPool.alloc())
+    data.id = id
     fake.list.push(data)
-    data.id       = id
-    fake.dict[id] = data
-    for (let index in fake.dicts) {
-      const id = (<any>data)[index]
-      if (id !== void 0) {
-        fake.dicts[index][id] = data
-      }
-    }
+    Fake.updateIndex(id, data, false)
     return Promise.resolve(data)
   }
 
@@ -93,7 +108,7 @@ export class Fake<T extends FakeModel> {
     const old  = fake.dict[id]
     if (!old) { return Promise.reject(new Error('Not Found')) }
     splice(fake.list, old)
-    delete fake.dict[id]
+    Fake.updateIndex(id, old, true)
     return Promise.resolve(old)
   }
 

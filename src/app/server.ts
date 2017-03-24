@@ -12,7 +12,7 @@
 import { DirectServer } from '../csb/DirectServer'
 import { Log } from '../shared/Log'
 import { Pusher } from '../csb/Pusher'
-import { NMap, SMap } from '../shared/utils'
+import { NMap, SMap, format } from '../shared/utils'
 import { ActionFunc } from '../csb/types'
 import { modules } from './modules'
 
@@ -35,20 +35,30 @@ interface Module {
 }
 
 for (let id in modules) {
+  let module: Module
   try {
-    const module: Module = require(`${__dirname}/../modules/${modules[id]}/actions/index`)
-    const actions        = module.actions || {}
-    const listeners      = module.listeners || {}
-    for (let key in actions) {
-      server.addAction(+id << 16 + +key, actions[key])
-    }
-    for (let event in listeners) {
-      for (let i = 0; i < listeners[event].length; i++) {
-        server.on(event, listeners[event][i])
-      }
-    }
-  } catch (_e) {
+    module = require(`${__dirname}/../modules/${modules[id]}/actions/index`)
+  } catch (e) {
     log.warning('Could not find module<%s> register as<%H>', modules[id], id)
+    continue
+  }
+  const actions   = module.actions || {}
+  const listeners = module.listeners || {}
+  for (let key in actions) {
+    if (+id ^ (+key >> 16)) {
+      const msg = format('The action id<%H> is not under module<%H> in <%s>',
+        +key,
+        +id,
+        modules[id])
+      log.error(msg)
+      throw new Error(msg)
+    }
+    server.addAction(+key, actions[key])
+  }
+  for (let event in listeners) {
+    for (let i = 0; i < listeners[event].length; i++) {
+      server.on(event, listeners[event][i])
+    }
   }
 }
 

@@ -63,7 +63,7 @@ export class UserService {
     return User.findByIndex('session', session)
   }
 
-  static findAndVerify(id: number, password: string): Promise<User> {
+  static findAndVerify(id: number, password: string): Promise<UserModel> {
     return User.find(id)
       .then((user) => user.password === password
         ? Promise.resolve(user)

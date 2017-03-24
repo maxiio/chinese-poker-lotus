@@ -20,7 +20,7 @@ import {
   SenderErrors,
   Responser
 } from './types'
-import { NMap, createSMap, SMap } from '../shared/utils'
+import { NMap, createSMap, SMap, createNMap, format } from '../shared/utils'
 import { Deferred } from '../shared/Deferred'
 import { stringifyMessage, parseMessage } from './utils'
 import { SockError } from './SockError'
@@ -112,7 +112,7 @@ export interface DuplexOptions {
 
 export abstract class Duplex extends EventEmitter {
   // registered actions
-  protected actions: NMap<ActionFunc>
+  protected actions: NMap<ActionFunc> = createNMap<ActionFunc>()
   // request timers
   protected requests: SMap<Deferred<Message>> = createSMap<Deferred<Message>>()
   // logger
@@ -149,7 +149,7 @@ export abstract class Duplex extends EventEmitter {
    */
   addAction(id: number, action: ActionFunc) {
     if (this.actions[id]) {
-      throw new Error('Action is already used!')
+      throw new Error(format('Action<%H> is already used!', id))
     }
     this.actions[id] = action
     return this
