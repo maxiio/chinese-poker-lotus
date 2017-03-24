@@ -10,7 +10,7 @@
 
 
 import { PokerCard, Seats } from './types'
-import { NMap, createNMap } from '../shared/utils'
+import { NMap, createNMap } from '../shared/misc'
 import { BASE_CARD_SIZE, SEAT_CARD_SIZE } from './constants'
 
 

@@ -9,7 +9,7 @@
  */
 
 
-export const MODULE_USER = 0x00010000
+export const MODULE_USER       = 0x0001
 export const CMD_USER_SIGN_UP  = 0x00010001
 export const CMD_USER_SIGN_IN  = 0x00010002
 export const CMD_USER_SIGN_OUT = 0x00010003

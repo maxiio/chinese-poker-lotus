@@ -9,12 +9,17 @@
  */
 
 
-import { SMap, createNMap, NMap, splice, createSMap } from '../shared/utils'
+import { SMap, createNMap, NMap, splice, createSMap } from '../shared/misc'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
 
 export interface FakeModel {
   id?: number;
 }
+
+
+export const ERR_CALL_OUT_OF_SCOPE = 'Cannot mount a class without namespace'
+export const ERR_NOT_FOUND         = 'Not Found'
+
 
 export class Fake<T extends FakeModel> {
   private list: any[]          = []
@@ -32,7 +37,7 @@ export class Fake<T extends FakeModel> {
     const ns: string        = (<any>this).NS
     const indexes: string[] = (<any>this).UNIQUE_INDEXES
     if (!ns) {
-      throw new Error('Cannot mount a class without namespace')
+      throw new Error(ERR_CALL_OUT_OF_SCOPE)
     }
     const fake = new Fake
     if (indexes) {
@@ -72,13 +77,13 @@ export class Fake<T extends FakeModel> {
   static find(id: number): Promise<any> {
     const fake = (this as any as typeof Fake).ns()
     const old  = fake.dict[id]
-    return old ? Promise.resolve(old) : Promise.reject(new Error('Not Found!'))
+    return old ? Promise.resolve(old) : Promise.reject(new Error(ERR_NOT_FOUND))
   }
 
   static findByIndex(index: string, id: any): Promise<any> {
     const fake = (this as any as typeof Fake).ns()
     if (!fake.dicts[index] || !fake.dicts[index][id]) {
-      return Promise.reject(new Error('Not Found'))
+      return Promise.reject(new Error(ERR_NOT_FOUND))
     }
     return Promise.resolve(fake.dicts[index][id])
   }
@@ -86,7 +91,7 @@ export class Fake<T extends FakeModel> {
   static update(id: number, data: any): Promise<any> {
     const fake = (this as any as typeof Fake).ns()
     const old  = fake.dict[id]
-    if (!old) { return Promise.reject(new Error('Not Found')) }
+    if (!old) { return Promise.reject(new Error(ERR_NOT_FOUND)) }
     Fake.updateIndex(id, old, true)
     Object.assign(old, data)
     splice(fake.list, old).push(old)
@@ -106,7 +111,7 @@ export class Fake<T extends FakeModel> {
   static remove(id: number): Promise<any> {
     const fake = (this as any as typeof Fake).ns()
     const old  = fake.dict[id]
-    if (!old) { return Promise.reject(new Error('Not Found')) }
+    if (!old) { return Promise.reject(new Error(ERR_NOT_FOUND)) }
     splice(fake.list, old)
     Fake.updateIndex(id, old, true)
     return Promise.resolve(old)

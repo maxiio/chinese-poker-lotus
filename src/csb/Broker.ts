@@ -12,8 +12,8 @@
 import WebSocket = require('ws')
 import { Log } from '../shared/Log'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
-import { createNMap, splice, random } from '../shared/utils'
-import { stringifyMessage } from './utils'
+import { createNMap, splice, random } from '../shared/misc'
+import { stringifyMessage } from './message'
 import { MessageKinds, ReservedResults, Message } from './types'
 
 

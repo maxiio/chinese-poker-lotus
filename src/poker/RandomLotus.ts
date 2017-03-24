@@ -10,7 +10,7 @@
 
 
 import { Lotus } from './Lotus'
-import { createNMap, random } from '../shared/utils'
+import { createNMap, random } from '../shared/misc'
 import { PokerCard, Seats } from './types'
 import { getInitialCards } from './utils'
 import { REAL_SEATS, SEAT_CARD_SIZE } from './constants'

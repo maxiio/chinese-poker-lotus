@@ -8,7 +8,7 @@
  * @desc Server.ts
  */
 
-import { createNMap, splice, SMap, NMap } from '../shared/utils'
+import { createNMap, splice, SMap, NMap } from '../shared/misc'
 import { Duplex, DuplexOptions } from './Duplex'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
 import { UINT16_MAX_VALUE } from '../shared/constants'

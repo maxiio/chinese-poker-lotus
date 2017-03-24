@@ -20,9 +20,9 @@ import {
   SenderErrors,
   Responser
 } from './types'
-import { NMap, createSMap, SMap, createNMap, format } from '../shared/utils'
+import { NMap, createSMap, SMap, createNMap, format } from '../shared/misc'
 import { Deferred } from '../shared/Deferred'
-import { stringifyMessage, parseMessage } from './utils'
+import { stringifyMessage, parseMessage } from './message'
 import { SockError } from './SockError'
 import WebSocket = require('ws')
 

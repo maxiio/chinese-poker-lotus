@@ -9,7 +9,7 @@
  */
 
 
-import { noop } from './utils'
+import { noop } from './misc'
 export class Deferred<T> {
   readonly resolve: (data: T|Promise<T>) => void
   readonly reject: (reason: any) => void

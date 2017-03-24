@@ -40,7 +40,7 @@ import {
   FightValues
 } from './types'
 import { Lotus } from './Lotus'
-import { NMap, inEnum } from '../shared/utils'
+import { NMap, inEnum } from '../shared/misc'
 import { RandomLotus } from './RandomLotus'
 import { MAP_FIGHT_TO_TIMES, NEXT_SEATS, TIME_VALUES, ALL_SEATS } from './constants'
 import { getBaseKind, parsePlayAction } from './utils'

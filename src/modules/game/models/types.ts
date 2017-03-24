@@ -9,3 +9,22 @@
  */
 
 
+import { FakeModel } from '../../../db/Fake'
+import { Seats } from '../../../poker/types'
+import { NMap } from '../../../shared/misc'
+import { Poker } from '../../../poker/Poker'
+
+
+export interface GameModel extends FakeModel {
+  seats: NMap<number>;
+  poker: Poker;
+  timer: number;
+}
+
+
+export interface GameSocketModel extends FakeModel {
+  socketId: number;
+  userId: number;
+  gameId: number;
+  seat: Seats;
+}

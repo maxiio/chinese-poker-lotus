@@ -41,20 +41,23 @@ export function createCard(id: number, value: CardValues, color: CardColors): Po
 }
 
 /**
- * 初始化一副新牌, 顺序: CA...CK,DA...DK,HA...HK,SA...SK,LJ,BJ
- * @return {PokerCard[]}
+ * 初始新牌, 顺序: CA...CK,DA...DK,HA...HK,SA...SK,LJ,BJ
+ * id: 0 => 53
  */
-export function getInitialCards() {
-  const cards = new Array<PokerCard>(TOTAL_CARD_SIZE)
-  let k       = 0
-  for (let j = 0; j < CARD_COLORS.length; j++) {
-    for (let i = 0; i < CARD_VALUES.length; i++) {
-      cards[k] = createCard(k, CARD_VALUES[i], CARD_COLORS[j])
+const INITIAL_CARDS = new Array<PokerCard>(TOTAL_CARD_SIZE);
+(function () {
+  let id = 0
+  for (let i = 0; i < CARD_COLORS.length; i++) {
+    for (let j = 0; j < CARD_VALUES.length; j++) {
+      INITIAL_CARDS[id] = createCard(id++, CARD_VALUES[j], CARD_COLORS[j])
     }
   }
-  cards[k++]   = createCard(k, CardValues.LJ, CardColors.None)
-  cards[k + 1] = createCard(k, CardValues.BJ, CardColors.None)
-  return cards
+  INITIAL_CARDS[id] = createCard(id++, CardValues.LJ, CardColors.None)
+  INITIAL_CARDS[id] = createCard(id + 1, CardValues.BJ, CardColors.None)
+})()
+
+export function getInitialCards() {
+  return INITIAL_CARDS.slice()
 }
 
 export function getBaseKind(base: PokerCard[]) {

@@ -10,7 +10,7 @@
 
 
 import { CardValues, TimesKinds, FightValues, Seats, CardColors } from './types'
-import { NMap } from '../shared/utils'
+import { NMap } from '../shared/misc'
 
 
 export const TIME_VALUES: NMap<number> = {

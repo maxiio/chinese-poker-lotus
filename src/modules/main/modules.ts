@@ -6,10 +6,12 @@
  * @since 2017-03-23 16:50:39
  * @version 1.0.0
  * @desc modules.ts
+ *
+ * When you need to add a module, register it here first
  */
 
 
-import { NMap } from '../shared/utils'
+import { NMap } from '../../shared/misc'
 
 
 // avoid use 0 in module id and cmd id

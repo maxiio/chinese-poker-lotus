@@ -9,11 +9,11 @@
  */
 
 
-import { DirectServer } from '../csb/DirectServer'
-import { Log } from '../shared/Log'
-import { Pusher } from '../csb/Pusher'
-import { NMap, SMap, format } from '../shared/utils'
-import { ActionFunc } from '../csb/types'
+import { DirectServer } from '../../csb/DirectServer'
+import { Log } from '../../shared/Log'
+import { Pusher } from '../../csb/Pusher'
+import { NMap, SMap, format } from '../../shared/misc'
+import { ActionFunc } from '../../csb/types'
 import { modules } from './modules'
 
 const log = Log.get('AS') // Access server
@@ -37,7 +37,7 @@ interface Module {
 for (let id in modules) {
   let module: Module
   try {
-    module = require(`${__dirname}/../modules/${modules[id]}/actions/index`)
+    module = require(`../${modules[id]}/actions/index`)
   } catch (e) {
     log.warning('Could not find module<%s> register as<%H>', modules[id], id)
     continue

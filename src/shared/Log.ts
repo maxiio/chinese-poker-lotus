@@ -9,7 +9,7 @@
  */
 
 
-import { createSMap, format } from './utils'
+import { createSMap, format } from './misc'
 import WritableStream = NodeJS.WritableStream
 
 

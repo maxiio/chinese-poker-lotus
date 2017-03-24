@@ -17,7 +17,7 @@ import {
   CMD_USER_SIGN_OUT,
   CMD_USER_UPDATE,
   CMD_USER_SIGN_UP
-} from '../consts'
+} from '../constants'
 import { UserModel } from '../models/types'
 import { UserService } from '../service'
 import { Pusher } from '../../../csb/Pusher'

@@ -11,7 +11,7 @@
 
 import { parse, stringify } from 'querystring'
 import { SockError } from './SockError'
-import { format } from '../shared/utils'
+import { format } from '../shared/misc'
 import { MessageEncodings, SenderErrors, MessageKinds, Message } from './types'
 
 
