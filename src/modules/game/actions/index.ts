@@ -14,7 +14,7 @@ import {
   MessageEncodings,
   ReservedResults,
   ActionFunc
-} from '../../../csb/types'
+} from '../../../socket/types'
 import {
   CMD_GAME_ADD,
   CMD_GAME_JOIN,

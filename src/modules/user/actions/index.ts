@@ -8,7 +8,7 @@
  * @desc index.ts
  */
 
-import { ClientInstance } from '../../../csb/Server'
+import { ClientInstance } from '../../../socket/Server'
 import {
   CONF_FIELD_SESSION,
   CONF_FIELD_USER_ID,
@@ -20,8 +20,8 @@ import {
 } from '../constants'
 import { UserModel } from '../models/types'
 import { UserService } from '../service'
-import { Pusher } from '../../../csb/Pusher'
-import { Responser, MessageEncodings, ReservedResults } from '../../../csb/types'
+import { Pusher } from '../../../socket/Pusher'
+import { Responser, MessageEncodings, ReservedResults } from '../../../socket/types'
 
 
 function onConnect(client: ClientInstance) {

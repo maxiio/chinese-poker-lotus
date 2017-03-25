@@ -10,4 +10,4 @@
 
 export * from './poker'
 export * from './shared'
-export * from './csb'
+export * from './socket'

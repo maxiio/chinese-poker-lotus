@@ -1,4 +1,4 @@
-# Client Server Broker
+# Socket message structure protocol
 
 A socket application protocol, with or without broker work fine. Request \<--\> response workflow, like HTTP.
 

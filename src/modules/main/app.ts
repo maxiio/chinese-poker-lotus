@@ -9,11 +9,11 @@
  */
 
 
-import { DirectServer } from '../../csb/DirectServer'
+import { DirectServer } from '../../socket/DirectServer'
 import { Log } from '../../shared/Log'
-import { Pusher } from '../../csb/Pusher'
+import { Pusher } from '../../socket/Pusher'
 import { NMap, SMap, format } from '../../shared/misc'
-import { ActionFunc } from '../../csb/types'
+import { ActionFunc } from '../../socket/types'
 import { modules } from './modules'
 
 const log = Log.get('AS') // Access server
