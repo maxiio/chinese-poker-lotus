@@ -22,3 +22,11 @@ export interface UserModel extends FakeModel {
   createdAt?: number;
   score?: number;
 }
+
+
+export interface UserMeta {
+  id: number;
+  nickname: string;
+  createdAt: number;
+  score: number;
+}
