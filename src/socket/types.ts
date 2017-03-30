@@ -38,6 +38,7 @@ export enum ReservedResults {
   TooManyRequests = 0xCF, // too many request
   InternalError   = 0xD0, // action throws error
   PayloadTooLarge = 0xD1, // payload too large
+  NotImplemented  = 0xD2,
 }
 
 // common message structure

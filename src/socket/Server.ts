@@ -19,16 +19,26 @@ export interface ServerOptions extends DuplexOptions {
   id?: number;
 }
 
-export interface ClientInstance {
-  id: number;
+export interface ClientMeta {
+  id: number; // socketId
+  uid?: number;
   ws?: WebSocket;
   headers: SMap<string>;
   midPool: UniqueIdPool;
 }
 
 export abstract class Server extends Duplex {
-  protected clientDict: NMap<ClientInstance> = createNMap<ClientInstance>()
-  protected clientList: ClientInstance[]     = []
+  protected clientDict: NMap<ClientMeta> = createNMap<ClientMeta>()
+  protected clientList: ClientMeta[]     = []
+  protected uidDict: NMap<ClientMeta[]>  = createNMap<ClientMeta[]>()
+
+  setUid(id: number, uid: number) {
+    const client = this.clientDict[id]
+    if (!client) { return false }
+    if (client.uid !== void 0) { return client.uid === uid }
+    client.uid = uid
+    client.cs.push()
+  }
 
   getMid(target: number) {
     return this.clientDict[target] ? this.clientDict[target].midPool.alloc() : 0
@@ -41,7 +51,7 @@ export abstract class Server extends Duplex {
       this.closeRemote(id)
     }
     const midPool  = new UniqueIdPool(0, UINT16_MAX_VALUE, void 0, true)
-    const instance = <ClientInstance>{ id, headers, ws, midPool }
+    const instance = <ClientMeta>{ id, headers, ws, midPool }
     this.clientList.push(instance)
     this.clientDict[id] = instance
     this.emit('connect', instance)

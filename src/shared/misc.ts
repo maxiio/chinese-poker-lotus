@@ -18,6 +18,10 @@ export interface NMap<T> {
   [key: number]: T;
 }
 
+export interface AnyFunc<T> {
+  (this: T, ...params: any[]): any;
+}
+
 export function createSMap<T>(initial?: SMap<T>): SMap<T> {
   const map: SMap<T> = {}
   map['__']          = void 0
@@ -168,6 +172,14 @@ export function format(fmt: any, ...params: any[]) {
     }
   }
   return ret
+}
+
+export function array2map(data: any[], field = 'id'): any {
+  const out = createSMap()
+  data.forEach((item) => {
+    out[item[field]] = item
+  })
+  return out
 }
 
 if (!module.parent) {

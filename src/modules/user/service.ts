@@ -9,64 +9,74 @@
  */
 
 
-import { UserModel } from './models/types'
-import { User } from './models/User'
+import { UserMeta, UserDoc } from './types'
+import { UserTable } from './tables'
+
+
+export const ERR_USER_INCORRECT_PASSWORD = 'ERR_USER_INCORRECT_PASSWORD'
 
 
 export class UserService {
 
-  static find(id: number): Promise<UserModel> {
-    return User.find(id)
+  static find(id: number): Promise<UserMeta> {
+    return UserTable.find(id).then((user) => user.pure('custom'))
   }
 
-  static add(data: UserModel): Promise<UserModel> {
+  static add(data: UserDoc): Promise<UserDoc> {
     data.createdAt = data.createdAt || +new Date
     data.score     = data.score || 0
-    return User.add(data)
+    data.nickname  = data.nickname || data.username
+    return UserTable.add(data)
   }
 
-  static list(filter?: (item: UserModel) => boolean, max = 10): Promise<UserModel[]> {
-    return User.list(filter, max)
+  static list(filter?: (item: UserDoc) => boolean, limit = 10): Promise<UserMeta[]> {
+    return UserTable
+      .findList(filter, limit)
+      .then((users) => users.map((user) => user.pure('custom')))
   }
 
-  static update(id: number, data: UserModel): Promise<UserModel> {
-    return User.update(id, data)
+  static update(data: UserDoc): Promise<UserMeta> {
+    return UserTable.update(data).then((user) => user.pure('custom'))
   }
 
-  static signIn(id: number): Promise<UserModel> {
-    const session = `%${+new Date}${Math.random()}`
-    return User.update(id, { session })
+  static signIn(id: number): Promise<UserMeta> {
+    const sessionId = `%${+new Date}${Math.random()}`
+    return UserTable.update({ id, sessionId }).then((user) => user.pure('session'))
   }
 
-  static signOut(id: number): Promise<UserModel> {
-    return User.update(id, { session: void 0 })
+  static signOut(id: number): Promise<UserMeta> {
+    return UserTable.update({ id, sessionId: void 0 }).then((user) => user.pure('custom'))
   }
 
-  static addScore(id: number, score: number): Promise<UserModel> {
-    return User.find(id).then((user) => User.update(id, { score: user.score + score }))
+  static addScore(id: number, score: number): Promise<UserMeta> {
+    return UserTable.find(id)
+      .then((user) => UserTable.update({ id, score: user.score + score }))
+      .then((user) => user.pure('custom'))
   }
 
-  static delScore(id: number, score: number): Promise<UserModel> {
-    return User.find(id)
-      .then((user) => User.update(id, { score: Math.max(0, user.score - score) }))
+  static delScore(id: number, score: number): Promise<UserMeta> {
+    return UserTable.find(id)
+      .then((user) => UserTable.update({ id, score: Math.max(0, user.score - score) }))
+      .then((user) => user.pure('custom'))
   }
 
-  static setSocket(id: number, socket: number): Promise<UserModel> {
-    return User.update(id, { socket })
+  static setSocket(id: number, socketId: number): Promise<UserMeta> {
+    return UserTable.update({ id, socketId })
+      .then((user) => user.pure('custom'))
   }
 
-  static findBySocket(socket: number): Promise<UserModel> {
-    return User.findByIndex('socket', socket)
+  static findBySocket(socketId: number): Promise<UserMeta> {
+    return UserTable.findByIndex('socketId', socketId).then((user) => user.pure('custom'))
   }
 
-  static findBySession(session: string): Promise<UserModel> {
-    return User.findByIndex('session', session)
+  static findBySession(sessionId: string): Promise<UserMeta> {
+    return UserTable.findByIndex('sessionId', sessionId).then((u) => u.pure('custom'))
   }
 
-  static findAndVerify(id: number, password: string): Promise<UserModel> {
-    return User.find(id)
+  static findAndVerify(id: number, password: string): Promise<UserMeta> {
+    return UserTable.find(id)
       .then((user) => user.password === password
-        ? Promise.resolve(user)
-        : Promise.reject(new Error('Password is incorrect')))
+        ? Promise.resolve(user.pure('custom'))
+        : Promise.reject(new Error(ERR_USER_INCORRECT_PASSWORD)))
   }
 }

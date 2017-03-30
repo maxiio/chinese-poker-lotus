@@ -131,10 +131,25 @@ export interface PlayAction {
 }
 
 
+export interface FightResult {
+  action: FightAction; // 抢地主胜利的一方, 即地主
+  fightTimes: TimesAction; // 抢地主倍数
+  baseTimes: TimesAction; // 底牌倍数
+  baseCards: PokerCard[]; // 底牌
+}
+
+
 export enum PokerStates {
   Fighting = 1,
   Playing  = 2,
   Finished = 3,
+}
+
+// 结局
+export enum PokerLoser {
+  Landlord = 1, // 地主输
+  Peasent  = 2, // 农民输
+  Deserter = 3, // 逃兵输
 }
 
 

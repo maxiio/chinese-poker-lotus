@@ -37,7 +37,7 @@ interface Module {
 for (let id in modules) {
   let module: Module
   try {
-    module = require(`../${modules[id]}/actions/index`)
+    module = require(`../${modules[id]}/actions`)
   } catch (e) {
     log.warning('Could not find module<%s> register as<%H>', modules[id], id)
     continue

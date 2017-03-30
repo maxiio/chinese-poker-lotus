@@ -37,7 +37,8 @@ import {
   SeatVisibleData,
   ActionErrors,
   PlayKinds,
-  FightValues
+  FightValues,
+  FightResult
 } from './types'
 import { Lotus } from './Lotus'
 import { NMap, inEnum } from '../shared/misc'
@@ -99,6 +100,20 @@ export class Poker extends EventEmitter {
     this.fightStarter = fightStarter
     this.lotus        = lotus
   }
+
+  getActor() { return this.actor }
+
+  getTimes() { return this.times }
+
+  getFightHistory() { return this.fightHistory.slice() }
+
+  getPlayHistory() { return this.playHistory.slice().map((round) => round.slice()) }
+
+  getLastRound() { return this.playHistory[this.playHistory.length - 1].slice() }
+
+  getPlayTimes() { return this.timesHistory.slice(2) }
+
+  getSeatFreeCards(seat: Seats) { return this.originalCards[seat].filter((card) => !this.cards[card.id].used) }
 
   /**
    * 获取用户可见数据, 用于断线重连时重置状态
@@ -214,6 +229,8 @@ export class Poker extends EventEmitter {
     this.timesHistory.push(action)
   }
 
+  fightResult: FightResult
+
   private finishFight() {
     const fight = this.fightHistory.filter((f) => f.value !== FightValues.Pass).pop()
     if (!fight) {
@@ -237,8 +254,14 @@ export class Poker extends EventEmitter {
       seat : Seats.Base,
       cards: this.originalCards[Seats.Base].slice(),
     })
+    this.fightResult = Object.freeze({
+      action    : fight,
+      fightTimes: this.timesHistory[0],
+      baseTimes : this.timesHistory[1],
+      baseCards : this.base,
+    })
     // 改变状态
-    this.state = PokerStates.Playing
+    this.state       = PokerStates.Playing
     // 开始新一轮游戏
     this.startRound(fight.seat)
   }
