@@ -152,3 +152,4 @@ We just need add a client id header to the packet as follow:
 - [x] More strict message interface.
 - [ ] Demo.
 - [ ] More useful document.
+- [ ] Multiple points connection control. (How to handle?)

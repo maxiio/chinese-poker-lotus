@@ -208,7 +208,11 @@ export class Broker {
   }
 
   private handleServerMessage(data: Buffer, from: number) {
-    if (!Buffer.isBuffer(data) || data.byteLength < 12) { return }
+    if (!Buffer.isBuffer(data) || data.byteLength < 12) {
+      this.log.debug('received unknown server message: %s',
+        Buffer.isBuffer(data) ? (<any>data).inspect() : data)
+      return
+    }
     const client = data.readUInt32BE(0)
     const kind   = data.readUInt8(4) >> 4
     switch (kind) {
@@ -222,7 +226,11 @@ export class Broker {
   }
 
   private handleClientMessage(data: Buffer, from: number) {
-    if (!Buffer.isBuffer(data) || data.byteLength < 8) { return }
+    if (!Buffer.isBuffer(data) || data.byteLength < 8) {
+      this.log.debug('received unknown client message: %s',
+        Buffer.isBuffer(data) ? (<any>data).inspect() : data)
+      return
+    }
     const client = this.clientDict[from]
     if (!client) { return }
     this.sendToServer(client.server, data, from)

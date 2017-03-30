@@ -10,9 +10,9 @@
 
 
 import { parse, stringify } from 'querystring'
-import { SockError } from './SockError'
 import { format } from '../shared/misc'
 import { MessageEncodings, SenderErrors, MessageKinds, Message } from './types'
+import { RichError, ERR_KIND_SOCKET } from '../shared/RichError'
 
 
 /**
@@ -111,7 +111,7 @@ export function stringifyPayload(data: any, encoding: MessageEncodings): Buffer 
  * @param data
  * @param client - if client is void 0, will not write to header, else will write
  * @return {Buffer}
- * @throws {SockError}
+ * @throws {RichError}
  */
 export function stringifyMessage(
   kind: MessageKinds,
@@ -133,9 +133,9 @@ export function stringifyMessage(
   try {
     payload = payload || stringifyPayload(data, encoding)
   } catch (e) {
-    throw new SockError(void 0, SenderErrors.StringifyPayload, void 0, void 0, e, {
-      client, kind, encoding, result, id, action, payload, data,
-    })
+    throw new RichError(SenderErrors.StringifyPayload, ERR_KIND_SOCKET, void 0, {
+      send: { client, kind, encoding, result, id, action, payload, data },
+    }, e)
   }
   return payload === void 0 ? header : Buffer.concat([header, payload])
 }
@@ -147,17 +147,23 @@ export function stringifyMessage(
  * @return {Message} - if payload === void 0, means without body
  * else if data === void 0, means could not parse payload according to
  * encoding, else parse success
- * @throws {SockError}
+ * @throws {RichError}
  */
 export function parseMessage(
   msg: Buffer,
   withClient = false,
 ): Message {
   if (!Buffer.isBuffer(msg)) {
-    throw new SockError('Received message is not a Buffer', SenderErrors.ParseMessage, void 0, msg)
+    throw new RichError(
+      SenderErrors.ParseMessage, ERR_KIND_SOCKET,
+      'Received message is not a Buffer', { receive: msg },
+    )
   }
   if (msg.byteLength < (withClient ? 12 : 8)) {
-    throw new SockError('Received message length is incorrect', SenderErrors.ParseMessage, void 0, msg)
+    throw new RichError(
+      SenderErrors.ParseMessage, ERR_KIND_SOCKET,
+      'Received message length is incorrect', { receive: msg },
+    )
   }
   const client   = withClient ? msg.readUInt32BE(0) : void 0
   const offset   = withClient ? 4 : 0
@@ -172,9 +178,11 @@ export function parseMessage(
   try {
     data = parsePayload(payload, encoding)
   } catch (e) {
-    throw new SockError(void 0, SenderErrors.ParsePayload, {
-      client, kind, encoding, result, id, action, payload
-    }, msg, e)
+    throw new RichError(
+      SenderErrors.ParsePayload, ERR_KIND_SOCKET, void 0,
+      { receive: msg, received: { client, kind, encoding, result, id, action, payload } },
+      e,
+    )
   }
   return { client, kind, encoding, result, id, action, payload, data }
 }

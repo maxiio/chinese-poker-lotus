@@ -12,6 +12,7 @@
 import { DuplexOptions, Duplex } from './Duplex'
 import { UINT16_MAX_VALUE } from '../shared/constants'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
+import { ClientMeta } from './types'
 import WebSocket = require('ws')
 
 
@@ -21,11 +22,16 @@ export class Client extends Duplex {
 
   readonly withClient = false
 
+
   getWs() { return this.ws }
 
   getMid() { return this.midPool.alloc() }
 
   closeSelf() { this.ws.close() }
+
+  setUid(): boolean { throw new Error('Client cannot set server uid!') }
+
+  getFrom(): ClientMeta { throw new Error('Client cannot get server meta!') }
 
   closeRemote() { throw new Error('Client cannot close server!') }
 

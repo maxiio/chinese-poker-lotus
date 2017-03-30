@@ -9,6 +9,9 @@
  */
 
 // message kinds
+import { UniqueIdPool } from '../shared/UniqueIdPool'
+import { SMap } from '../shared/misc'
+import WebSocket = require('ws')
 export enum MessageKinds {
   Request   = 0x1,
   Response  = 0x2,
@@ -53,16 +56,25 @@ export interface Message {
   data?: any;
 }
 
+export interface SockErrorData {
+  send?: Message;
+  sent?: Buffer;
+  receive?: Buffer;
+  received?: Message;
+  kind?: MessageKinds;
+  remote?: number;
+}
+
 export interface Responser {
   readonly request: Message;
   readonly timeout: number;
   readonly isTimeout: boolean;
   readonly isSent: boolean;
   readonly result: number;
-  readonly from: number;
+  readonly from: ClientMeta;
   setResult(result: number): this;
   setTimeout(timeout: number): this;
-  send(data?: any, encoding?: MessageEncodings): Promise<void>;
+  send(data?: any, encoding?: MessageEncodings, result?: number): Promise<void>;
 }
 
 // signature of action function
@@ -78,3 +90,14 @@ export enum SenderErrors {
   RequestTimeout   = 0x107,
   RepeatSend       = 0x108,
 }
+
+
+export interface ClientMeta {
+  id: number; // socketId
+  uid?: number;
+  ws?: WebSocket;
+  headers: SMap<string>;
+  address?: string;
+  midPool: UniqueIdPool;
+}
+

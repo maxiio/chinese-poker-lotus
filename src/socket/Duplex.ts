@@ -18,18 +18,20 @@ import {
   MessageKinds,
   MessageEncodings,
   SenderErrors,
-  Responser
+  Responser,
+  SockErrorData,
+  ClientMeta
 } from './types'
 import { NMap, createSMap, SMap, createNMap, format } from '../shared/misc'
 import { Deferred } from '../shared/Deferred'
 import { stringifyMessage, parseMessage } from './message'
-import { SockError } from './SockError'
+import { RichError, ERR_KIND_SOCKET } from '../shared/RichError'
 import WebSocket = require('ws')
 
 
 class SockResponser implements Responser {
   readonly request: Message
-  readonly from: number
+  readonly from: ClientMeta
   private timer: number
   private _timeout: number
   get timeout() { return this._timeout }
@@ -62,7 +64,7 @@ class SockResponser implements Responser {
 
   private worker: Duplex
 
-  constructor(request: Message, timeout: number, from: number, worker: Duplex) {
+  constructor(request: Message, timeout: number, from: ClientMeta, worker: Duplex) {
     this.request = request
     this.from    = from
     this.worker  = worker
@@ -70,17 +72,18 @@ class SockResponser implements Responser {
     this.setTimeout(timeout)
   }
 
-  send(data?: any, encoding?: MessageEncodings): Promise<void> {
+  send(data?: any, encoding?: MessageEncodings, result?: number): Promise<void> {
+    this.setResult(result)
     return new Promise<void>((resolve, reject) => {
       if (this._isSent || this._isTimeout) {
-        reject(new SockError(
+        reject(new RichError(
+          SenderErrors.RepeatSend, ERR_KIND_SOCKET,
           'Cannot re-send response when the message is sent or is timeout',
-          SenderErrors.RepeatSend, void 0, void 0, void 0, void 0, void 0,
         ))
         return
       }
       this.worker.send({
-        client  : this.worker.withClient ? this.from : void 0,
+        client  : this.worker.withClient && this.from ? this.from.id : void 0,
         kind    : MessageKinds.Response,
         encoding: encoding,
         result  : this._result,
@@ -88,7 +91,7 @@ class SockResponser implements Responser {
         action  : this.request.action,
         payload : void 0,
         data    : data,
-      }, this.from, (err) => {
+      }, this.from ? this.from.id : void 0, (err) => {
         if (err) {
           reject(err)
         } else {
@@ -113,6 +116,7 @@ export interface DuplexOptions {
 export abstract class Duplex extends EventEmitter {
   // registered actions
   protected actions: NMap<ActionFunc> = createNMap<ActionFunc>()
+
   // request timers
   protected requests: SMap<Deferred<Message>> = createSMap<Deferred<Message>>()
   // logger
@@ -124,6 +128,8 @@ export abstract class Duplex extends EventEmitter {
   // get socket by target id
   abstract getWs(target: number): WebSocket
 
+  abstract getFrom(from: number): ClientMeta
+
   // get next message id
   abstract getMid(target: number): number
 
@@ -132,6 +138,8 @@ export abstract class Duplex extends EventEmitter {
 
   // close remote, only for server
   abstract closeRemote(id: number): void
+
+  abstract setUid(id: number, uid: number): boolean
 
   constructor(
     private options: DuplexOptions
@@ -168,7 +176,7 @@ export abstract class Duplex extends EventEmitter {
    * @param target - the target socket id
    * @param callback - callback
    */
-  send(msg: Message, target?: number, callback?: (err: SockError) => void) {
+  send(msg: Message, target?: number, callback?: (err: RichError) => void) {
     let data: Buffer
     try {
       data = stringifyMessage(msg.kind,
@@ -185,7 +193,10 @@ export abstract class Duplex extends EventEmitter {
     }
     const ws = this.getWs(target)
     if (!ws) {
-      callback(new SockError('Not found target socket!', SenderErrors.NotFoundTarget, void 0, void 0, void 0, msg, data))
+      callback(new RichError(
+        SenderErrors.NotFoundTarget, ERR_KIND_SOCKET,
+        'Not found target socket!', <SockErrorData>{ send: msg, sent: data },
+      ))
       return data
     }
     ws.send(msg, (err) => {
@@ -201,7 +212,11 @@ export abstract class Duplex extends EventEmitter {
           msg.id,
           target)
       }
-      callback(new SockError('Socket write error', SenderErrors.WriteError, void 0, void 0, err, msg, data))
+      callback(new RichError(
+        SenderErrors.WriteError, ERR_KIND_SOCKET,
+        'Socket write error', <SockErrorData>{ send: msg, sent: data },
+        err,
+      ))
     })
     return data
   }
@@ -232,7 +247,10 @@ export abstract class Duplex extends EventEmitter {
 
     // holder
     holder = new Deferred<Message>(this.options.timeout, () => {
-      holder.reject(new SockError('Request timeout', SenderErrors.RequestTimeout, void 0, void 0, void 0, msg, sent))
+      holder.reject(new RichError(
+        SenderErrors.RequestTimeout, ERR_KIND_SOCKET,
+        'Request timeout', <SockErrorData>{ send: msg, sent: sent },
+      ))
     })
 
     if (hold) {
@@ -252,7 +270,7 @@ export abstract class Duplex extends EventEmitter {
   }
 
   protected response(msg: Message, from: number) {
-    const man    = new SockResponser(msg, this.options.timeout, from, this)
+    const man    = new SockResponser(msg, this.options.timeout, this.getFrom(from), this)
     const action = this.actions[msg.action]
     if (!action) {
       man.setResult(ReservedResults.NotFound).send()
@@ -267,7 +285,7 @@ export abstract class Duplex extends EventEmitter {
     try {
       msg = parseMessage(data, this.withClient)
     } catch (e) {
-      if (e && e.isSockError && e.code === SenderErrors.ParsePayload) {
+      if (e && e.isSocket && e.is(SenderErrors.ParsePayload)) {
         this.send({
           client  : from,
           kind    : MessageKinds.Response,

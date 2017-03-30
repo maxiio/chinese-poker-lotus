@@ -12,32 +12,37 @@ import { createNMap, splice, SMap, NMap } from '../shared/misc'
 import { Duplex, DuplexOptions } from './Duplex'
 import { UniqueIdPool } from '../shared/UniqueIdPool'
 import { UINT16_MAX_VALUE } from '../shared/constants'
+import { ClientMeta } from './types'
 import WebSocket = require('ws')
 
 
 export interface ServerOptions extends DuplexOptions {
   id?: number;
-}
-
-export interface ClientMeta {
-  id: number; // socketId
-  uid?: number;
-  ws?: WebSocket;
-  headers: SMap<string>;
-  midPool: UniqueIdPool;
+  maxPoint?: number;
 }
 
 export abstract class Server extends Duplex {
   protected clientDict: NMap<ClientMeta> = createNMap<ClientMeta>()
   protected clientList: ClientMeta[]     = []
-  protected uidDict: NMap<ClientMeta[]>  = createNMap<ClientMeta[]>()
+  protected clientUMap: NMap<ClientMeta> = createNMap<ClientMeta>()
+
+  getFrom(from: number) { return this.clientDict[from] }
 
   setUid(id: number, uid: number) {
-    const client = this.clientDict[id]
-    if (!client) { return false }
-    if (client.uid !== void 0) { return client.uid === uid }
-    client.uid = uid
-    client.cs.push()
+    if (!this.clientDict[id]) { return false }
+    if (uid === void 0) {
+      if (this.clientDict[id].uid !== void 0) {
+        delete this.clientUMap[this.clientDict[id].uid]
+        this.clientDict[id].uid = void 0
+      }
+      return true
+    }
+    if (this.clientDict[id].uid !== void 0 && this.clientDict[id].uid !== uid) {
+      // throw new Error('Do not support multiple point join')
+      return false
+    }
+    this.clientUMap[this.clientDict[id].uid = uid] = this.clientDict[id]
+    return true
   }
 
   getMid(target: number) {

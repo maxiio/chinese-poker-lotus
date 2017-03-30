@@ -10,7 +10,7 @@
  * 1. Socket连接
  * 2. 用户模块检查, 所以游戏中的标志不能用SocketId, 因为有断线重连的情况(或者socketId由UI层决定而不是socket自身?)
  * 2. 检查是否在房间中
- *  1. 在就自动进入
+ *  1. 在则自动进入
  * 3. 进入大厅, 接收广播消息
  * 4. 随机进入或者创建房间或者
  */
@@ -69,7 +69,7 @@ export class GameService {
   static async listGameMeta(
     filter?: (item: GameDoc) => boolean,
     limit = 10,
-  ): Promise<GameMeta> {
+  ): Promise<GameMeta[]> {
     const games = await GameTable.findList(filter, limit)
     const ss    = new Array<number>(0)
     games.forEach((game) => {
@@ -126,12 +126,7 @@ export class GameService {
   }
 
   static async join({ socketId, gameId, seat }: {socketId: number, gameId?: number, seat?: Seats}): Promise<GameJoinMeta> {
-    try {
-      const old = await GameService.getSyncMetaBySocket(socketId)
-      if (gameId !== void 0 && old.id !== gameId) {
-        throw new Error(ERR_GAME_USER_IN_ROOM_ALREADY)
-      }
-      return old
-    }
+    console.log(socketId, gameId, seat)
+    return void 0
   }
 }
